@@ -1,8 +1,9 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
+import { useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Home, Calendar } from "lucide-react";
 
-const NotFound = () => {
+const NotFound: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
@@ -21,10 +22,16 @@ const NotFound = () => {
         </div>
         <div className="flex gap-4 justify-center">
           <Button asChild variant="medical">
-            <a href="/">العودة للرئيسية</a>
+            <Link to="/" className="flex items-center gap-2">
+              <Home className="w-4 h-4" />
+              العودة للرئيسية
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <a href="/appointments">المواعيد</a>
+            <Link to="/appointments" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              المواعيد
+            </Link>
           </Button>
         </div>
       </div>
