@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ClipboardList, Clock, User, Phone, ArrowUp, ArrowDown, Play } from 'lucide-react';
+import { ClipboardList, Clock, User, Phone, ArrowUp, ArrowDown, Play, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
@@ -145,6 +145,10 @@ const WaitingList = () => {
               <Clock className="w-4 h-4 ml-2" />
               {waitingAppointments.length} في الانتظار
             </Badge>
+            <Button variant="medical">
+              <Plus className="w-4 h-4 ml-2" />
+              حجز سريع
+            </Button>
           </div>
         </div>
 

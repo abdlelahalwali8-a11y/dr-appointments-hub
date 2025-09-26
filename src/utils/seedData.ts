@@ -137,6 +137,16 @@ export const seedSampleData = async () => {
             appointment_time: '11:00',
             status: 'scheduled' as const,
             notes: 'استشارة طبية'
+          },
+          {
+            patient_id: insertedPatients[4].id,
+            doctor_id: doctors[0].id,
+            appointment_date: today.toISOString().split('T')[0],
+            appointment_time: '11:30',
+            status: 'return' as const,
+            notes: 'زيارة متابعة',
+            is_return_visit: true,
+            original_appointment_id: null
           }
         ];
 
@@ -148,6 +158,40 @@ export const seedSampleData = async () => {
           console.error('خطأ في إدخال المواعيد:', appointmentsError);
         } else {
           console.log('تم إدخال المواعيد التجريبية');
+        }
+      }
+    
+      // Sample notifications
+      if (user) {
+        const sampleNotifications = [
+          {
+            user_id: user.id,
+            title: 'موعد جديد اليوم',
+            message: 'لديك موعد مع أحمد محمد علي في تمام الساعة 9:30 صباحاً',
+            type: 'appointment'
+          },
+          {
+            user_id: user.id,
+            title: 'تذكير مهم',
+            message: 'لا تنس تحديث بيانات المرضى الجديدة',
+            type: 'reminder'
+          },
+          {
+            user_id: user.id,
+            title: 'تحديث النظام',
+            message: 'تم تحديث النظام بنجاح مع ميزات جديدة',
+            type: 'system'
+          }
+        ];
+
+        const { error: notificationsError } = await supabase
+          .from('notifications')
+          .insert(sampleNotifications);
+
+        if (notificationsError) {
+          console.error('خطأ في إدخال الإشعارات:', notificationsError);
+        } else {
+          console.log('تم إدخال الإشعارات التجريبية');
         }
       }
     }

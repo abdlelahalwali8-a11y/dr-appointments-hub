@@ -14,7 +14,8 @@ import {
   ClipboardList,
   BarChart3,
   Shield,
-  LogOut
+  LogOut,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,12 @@ const Sidebar = () => {
       icon: Home,
       path: '/',
       roles: ['admin', 'doctor', 'receptionist', 'patient']
+    },
+    {
+      title: 'الحجز السريع',
+      icon: Plus,
+      path: '/quick-booking',
+      roles: ['admin', 'receptionist']
     },
     {
       title: 'المواعيد',

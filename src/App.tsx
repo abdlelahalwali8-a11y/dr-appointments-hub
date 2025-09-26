@@ -15,6 +15,8 @@ import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Permissions from "./pages/Permissions";
+import QuickBooking from "./pages/QuickBooking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +39,8 @@ const App = () => (
             <Route path="/reports" element={<Reports />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/permissions" element={<Permissions />} />
+            <Route path="/quick-booking" element={<QuickBooking />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
