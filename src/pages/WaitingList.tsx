@@ -7,6 +7,7 @@ import { ClipboardList, Clock, User, Phone, ArrowUp, ArrowDown, Play, Plus } fro
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface WaitingAppointment {
@@ -25,6 +26,7 @@ interface WaitingAppointment {
 }
 
 const WaitingList = () => {
+  const permissions = usePermissions();
   const [waitingAppointments, setWaitingAppointments] = useState<WaitingAppointment[]>([]);
   const [loading, setLoading] = useState(true);
 

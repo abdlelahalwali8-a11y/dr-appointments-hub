@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { BarChart3, TrendingUp, Calendar, DollarSign, Users, Stethoscope, FileText, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface DashboardStats {
@@ -19,6 +20,7 @@ interface DashboardStats {
 }
 
 const Reports = () => {
+  const permissions = usePermissions();
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     totalAppointments: 0,

@@ -10,6 +10,7 @@ import { FileText, Search, Plus, Calendar, User, Stethoscope, FileImage, Pill } 
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface MedicalRecord {
@@ -33,6 +34,7 @@ interface MedicalRecord {
 }
 
 const MedicalRecords = () => {
+  const permissions = usePermissions();
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

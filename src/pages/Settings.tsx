@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, Building, Clock, Bell, Shield, Save, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface CenterSettings {
@@ -28,6 +29,7 @@ interface CenterSettings {
 }
 
 const Settings = () => {
+  const permissions = usePermissions();
   const [settings, setSettings] = useState<CenterSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -10,6 +10,7 @@ import { Stethoscope, Search, Plus, Phone, Mail, Clock, DollarSign, Calendar } f
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface Doctor {
@@ -33,6 +34,7 @@ interface Doctor {
 }
 
 const Doctors = () => {
+  const permissions = usePermissions();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +210,8 @@ const Doctors = () => {
               إدارة بيانات الأطباء وتخصصاتهم
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          {permissions.canManageDoctors && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="medical">
                 <Plus className="w-4 h-4 ml-2" />
@@ -328,6 +331,7 @@ const Doctors = () => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Search */}
@@ -373,7 +377,7 @@ const Doctors = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-2">
                           <div>
                             <h4 className="text-lg font-semibold text-foreground">
                               د. {doctor.profiles.full_name}
@@ -384,13 +388,15 @@ const Doctors = () => {
                             <Badge variant={doctor.is_available ? "default" : "secondary"}>
                               {doctor.is_available ? "متاح" : "غير متاح"}
                             </Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleDoctorAvailability(doctor.id, doctor.is_available)}
-                            >
-                              {doctor.is_available ? "إلغاء التفعيل" : "تفعيل"}
-                            </Button>
+                            {permissions.canManageDoctors && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => toggleDoctorAvailability(doctor.id, doctor.is_available)}
+                              >
+                                {doctor.is_available ? "إلغاء التفعيل" : "تفعيل"}
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">

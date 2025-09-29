@@ -9,6 +9,8 @@ import { Users, Search, Plus, Phone, Mail, MapPin, Calendar, Heart } from 'lucid
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Pencil, Trash2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 
 interface Patient {
@@ -32,10 +34,12 @@ interface Patient {
 }
 
 const Patients = () => {
+  const permissions = usePermissions();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [newPatient, setNewPatient] = useState({
     full_name: '',
     phone: '',
@@ -85,22 +89,43 @@ const Patients = () => {
     e.preventDefault();
 
     try {
-      const { error } = await supabase
-        .from('patients')
-        .insert([{
-          ...newPatient,
-          date_of_birth: newPatient.date_of_birth || null,
-          gender: newPatient.gender || null,
-        }]);
+      if (editingPatient) {
+        // Update existing patient
+        const { error } = await supabase
+          .from('patients')
+          .update({
+            ...newPatient,
+            date_of_birth: newPatient.date_of_birth || null,
+            gender: newPatient.gender || null,
+          })
+          .eq('id', editingPatient.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "نجح الإضافة",
-        description: "تم إضافة المريض بنجاح",
-      });
+        toast({
+          title: "نجح التحديث",
+          description: "تم تحديث بيانات المريض بنجاح",
+        });
+      } else {
+        // Add new patient
+        const { error } = await supabase
+          .from('patients')
+          .insert([{
+            ...newPatient,
+            date_of_birth: newPatient.date_of_birth || null,
+            gender: newPatient.gender || null,
+          }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "نجح الإضافة",
+          description: "تم إضافة المريض بنجاح",
+        });
+      }
 
       setIsDialogOpen(false);
+      setEditingPatient(null);
       setNewPatient({
         full_name: '',
         phone: '',
@@ -113,10 +138,51 @@ const Patients = () => {
         blood_type: '',
       });
     } catch (error: any) {
-      console.error('Error adding patient:', error);
+      console.error('Error saving patient:', error);
       toast({
         title: "خطأ",
-        description: error.message.includes('unique') ? "رقم الهاتف مسجل مسبقاً" : "فشل في إضافة المريض",
+        description: error.message.includes('unique') ? "رقم الهاتف مسجل مسبقاً" : "فشل في حفظ بيانات المريض",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditPatient = (patient: Patient) => {
+    setEditingPatient(patient);
+    setNewPatient({
+      full_name: patient.full_name,
+      phone: patient.phone,
+      email: patient.email || '',
+      date_of_birth: patient.date_of_birth || '',
+      gender: patient.gender || '',
+      address: patient.address || '',
+      medical_history: patient.medical_history || '',
+      allergies: patient.allergies || '',
+      blood_type: patient.blood_type || '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDeletePatient = async (patientId: string) => {
+    if (!confirm('هل أنت متأكد من حذف بيانات هذا المريض؟')) return;
+
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .delete()
+        .eq('id', patientId);
+
+      if (error) throw error;
+
+      toast({
+        title: "نجح الحذف",
+        description: "تم حذف بيانات المريض بنجاح",
+      });
+    } catch (error: any) {
+      console.error('Error deleting patient:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف بيانات المريض",
         variant: "destructive",
       });
     }
@@ -152,16 +218,33 @@ const Patients = () => {
               إدارة بيانات وسجلات المرضى
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="medical">
-                <Plus className="w-4 h-4 ml-2" />
-                مريض جديد
-              </Button>
-            </DialogTrigger>
+          {permissions.canCreatePatients && (
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingPatient(null);
+                setNewPatient({
+                  full_name: '',
+                  phone: '',
+                  email: '',
+                  date_of_birth: '',
+                  gender: '',
+                  address: '',
+                  medical_history: '',
+                  allergies: '',
+                  blood_type: '',
+                });
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="medical">
+                  <Plus className="w-4 h-4 ml-2" />
+                  مريض جديد
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>إضافة مريض جديد</DialogTitle>
+                <DialogTitle>{editingPatient ? 'تعديل بيانات المريض' : 'إضافة مريض جديد'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleAddPatient} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -254,7 +337,7 @@ const Patients = () => {
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" variant="medical" className="flex-1">
-                    إضافة المريض
+                    {editingPatient ? 'حفظ التعديلات' : 'إضافة المريض'}
                   </Button>
                   <Button
                     type="button"
@@ -268,6 +351,7 @@ const Patients = () => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Search */}
@@ -318,8 +402,29 @@ const Patients = () => {
                           <h4 className="text-lg font-semibold text-foreground">
                             {patient.full_name}
                           </h4>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(patient.created_at).toLocaleDateString('ar-SA')}
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(patient.created_at).toLocaleDateString('ar-SA')}
+                            </div>
+                            {permissions.canEditPatients && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditPatient(patient)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {permissions.canDeletePatients && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeletePatient(patient.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">

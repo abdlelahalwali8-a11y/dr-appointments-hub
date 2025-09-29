@@ -8,6 +8,7 @@ import { Calendar, Search, Plus, Filter, Clock, Phone, User } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface Appointment {
@@ -30,6 +31,7 @@ interface Appointment {
 }
 
 const Appointments = () => {
+  const permissions = usePermissions();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,26 +250,28 @@ const Appointments = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      {appointment.status === 'scheduled' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateAppointmentStatus(appointment.id, 'waiting')}
-                        >
-                          انتظار
-                        </Button>
-                      )}
-                      {appointment.status === 'waiting' && (
-                        <Button
-                          size="sm"
-                          variant="medical"
-                          onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
-                        >
-                          مكتمل
-                        </Button>
-                      )}
-                    </div>
+                    {permissions.canEditAppointments && (
+                      <div className="flex gap-2">
+                        {appointment.status === 'scheduled' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateAppointmentStatus(appointment.id, 'waiting')}
+                          >
+                            انتظار
+                          </Button>
+                        )}
+                        {appointment.status === 'waiting' && (
+                          <Button
+                            size="sm"
+                            variant="medical"
+                            onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
+                          >
+                            مكتمل
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

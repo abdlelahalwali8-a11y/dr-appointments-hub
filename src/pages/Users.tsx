@@ -10,6 +10,7 @@ import { UserCheck, Search, Plus, Mail, Phone, Shield, MoreHorizontal, Edit, Tra
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
 
 interface UserProfile {
@@ -24,6 +25,7 @@ interface UserProfile {
 }
 
 const Users = () => {
+  const permissions = usePermissions();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
