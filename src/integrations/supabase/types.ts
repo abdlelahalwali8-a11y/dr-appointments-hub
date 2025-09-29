@@ -459,6 +459,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
+      setup_admin_user: {
+        Args: { admin_email: string; admin_full_name?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       appointment_status:
