@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { UserCheck, Search, Plus, Mail, Phone, Shield, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { UserCheck, Search, Plus, Mail, Phone, Shield, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
@@ -31,7 +33,16 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    phone: '',
+    role: 'patient' as UserProfile['role'],
+  });
 
   const fetchUsers = async () => {
     try {
@@ -66,14 +77,156 @@ const Users = () => {
     onDelete: () => fetchUsers(),
   });
 
-  const updateUserRole = async (userId: string, newRole: UserProfile['role']) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUserData.email,
+        password: newUserData.password,
+        options: {
+          data: {
+            full_name: newUserData.fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Update profile with role and phone
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            role: newUserData.role,
+            phone: newUserData.phone,
+          })
+          .eq('user_id', authData.user.id);
+
+        if (profileError) throw profileError;
+
+        // Update user_roles
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .upsert({
+            user_id: authData.user.id,
+            role: newUserData.role,
+          });
+
+        if (roleError) throw roleError;
+      }
+
+      toast({
+        title: "تم الإنشاء",
+        description: "تم إنشاء المستخدم بنجاح",
+      });
+
+      setIsDialogOpen(false);
+      setNewUserData({
+        email: '',
+        password: '',
+        fullName: '',
+        phone: '',
+        role: 'patient',
+      });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "خطأ",
+        description: error.message || "فشل في إنشاء المستخدم",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditUser = async (user: UserProfile) => {
+    setIsSubmitting(true);
+
     try {
       const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: user.full_name,
+          phone: user.phone,
+          email: user.email,
+        })
+        .eq('user_id', user.user_id);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث بيانات المستخدم بنجاح",
+      });
+
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "فشل في تحديث بيانات المستخدم",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setIsSubmitting(true);
+
+    try {
+      // Delete from profiles (this will cascade to user_roles)
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف المستخدم بنجاح",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف المستخدم",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateUserRole = async (userId: string, newRole: UserProfile['role']) => {
+    try {
+      // Update profile
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('user_id', userId);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Update user_roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: newRole,
+        });
+
+      if (roleError) throw roleError;
 
       toast({
         title: "تم التحديث",
@@ -174,6 +327,88 @@ const Users = () => {
               إدارة حسابات وصلاحيات المستخدمين
             </p>
           </div>
+          {permissions.canManageUsers && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="medical" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  إضافة مستخدم جديد
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>إضافة مستخدم جديد</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateUser} className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="new-fullname">الاسم الكامل</Label>
+                    <Input
+                      id="new-fullname"
+                      value={newUserData.fullName}
+                      onChange={(e) => setNewUserData({ ...newUserData, fullName: e.target.value })}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-email">البريد الإلكتروني</Label>
+                    <Input
+                      id="new-email"
+                      type="email"
+                      value={newUserData.email}
+                      onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-password">كلمة المرور</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newUserData.password}
+                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                      required
+                      minLength={8}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-phone">رقم الهاتف</Label>
+                    <Input
+                      id="new-phone"
+                      type="tel"
+                      value={newUserData.phone}
+                      onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-role">الدور</Label>
+                    <Select
+                      value={newUserData.role}
+                      onValueChange={(value) => setNewUserData({ ...newUserData, role: value as UserProfile['role'] })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="patient">مريض</SelectItem>
+                        <SelectItem value="receptionist">موظف استقبال</SelectItem>
+                        <SelectItem value="doctor">طبيب</SelectItem>
+                        <SelectItem value="admin">مدير النظام</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" variant="medical" disabled={isSubmitting}>
+                      {isSubmitting ? "جاري الإنشاء..." : "إنشاء المستخدم"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Search and Filter */}
@@ -264,24 +499,102 @@ const Users = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <select
-                      value={user.role}
-                      onChange={(e) => updateUserRole(user.user_id, e.target.value as UserProfile['role'])}
-                      className="px-2 py-1 text-sm border rounded bg-background"
-                    >
-                      <option value="admin">مدير النظام</option>
-                      <option value="doctor">طبيب</option>
-                      <option value="receptionist">موظف استقبال</option>
-                      <option value="patient">مريض</option>
-                    </select>
-                    
-                    <Button
-                      size="sm"
-                      variant={user.is_active ? "outline" : "medical"}
-                      onClick={() => toggleUserStatus(user.user_id, user.is_active)}
-                    >
-                      {user.is_active ? "إلغاء التفعيل" : "تفعيل"}
-                    </Button>
+                    {permissions.canManageUsers && (
+                      <>
+                        <select
+                          value={user.role}
+                          onChange={(e) => updateUserRole(user.user_id, e.target.value as UserProfile['role'])}
+                          className="px-2 py-1 text-sm border rounded bg-background"
+                        >
+                          <option value="admin">مدير النظام</option>
+                          <option value="doctor">طبيب</option>
+                          <option value="receptionist">موظف استقبال</option>
+                          <option value="patient">مريض</option>
+                        </select>
+                        
+                        <Button
+                          size="sm"
+                          variant={user.is_active ? "outline" : "medical"}
+                          onClick={() => toggleUserStatus(user.user_id, user.is_active)}
+                        >
+                          {user.is_active ? "إلغاء التفعيل" : "تفعيل"}
+                        </Button>
+
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent dir="rtl">
+                            <DialogHeader>
+                              <DialogTitle>تعديل بيانات المستخدم</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 mt-4">
+                              <div>
+                                <Label>الاسم الكامل</Label>
+                                <Input
+                                  value={selectedUser?.full_name || ''}
+                                  onChange={(e) => setSelectedUser(selectedUser ? { ...selectedUser, full_name: e.target.value } : null)}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label>البريد الإلكتروني</Label>
+                                <Input
+                                  value={selectedUser?.email || ''}
+                                  onChange={(e) => setSelectedUser(selectedUser ? { ...selectedUser, email: e.target.value } : null)}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label>رقم الهاتف</Label>
+                                <Input
+                                  value={selectedUser?.phone || ''}
+                                  onChange={(e) => setSelectedUser(selectedUser ? { ...selectedUser, phone: e.target.value } : null)}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                variant="medical"
+                                onClick={() => selectedUser && handleEditUser(selectedUser)}
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? "جاري الحفظ..." : "حفظ التغييرات"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+
+                        <AlertDialog open={isDeleteDialogOpen && selectedUser?.id === user.id} onOpenChange={setIsDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" onClick={() => setSelectedUser(user)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent dir="rtl">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                هل أنت متأكد من حذف المستخدم "{user.full_name}"؟ لا يمكن التراجع عن هذا الإجراء.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteUser(user.user_id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? "جاري الحذف..." : "حذف"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                   </div>
                 </div>
               ))
