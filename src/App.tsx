@@ -20,84 +20,93 @@ import Permissions from "./pages/Permissions";
 import QuickBooking from "./pages/QuickBooking";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      retry: 1,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } />
-            <Route path="/appointments" element={
-              <ProtectedRoute>
-                <Appointments />
-              </ProtectedRoute>
-            } />
-            <Route path="/patients" element={
-              <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
-                <Patients />
-              </ProtectedRoute>
-            } />
-            <Route path="/doctors" element={
-              <ProtectedRoute>
-                <Doctors />
-              </ProtectedRoute>
-            } />
-            <Route path="/waiting-list" element={
-              <ProtectedRoute allowedRoles={['admin', 'receptionist']}>
-                <WaitingList />
-              </ProtectedRoute>
-            } />
-            <Route path="/medical-records" element={
-              <ProtectedRoute allowedRoles={['admin', 'doctor']}>
-                <MedicalRecords />
-              </ProtectedRoute>
-            } />
-            <Route path="/reports" element={
-              <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
-                <Reports />
-              </ProtectedRoute>
-            } />
-            <Route path="/notifications" element={
-              <ProtectedRoute>
-                <Notifications />
-              </ProtectedRoute>
-            } />
-            <Route path="/users" element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <Users />
-              </ProtectedRoute>
-            } />
-            <Route path="/permissions" element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <Permissions />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="/quick-booking" element={
-              <ProtectedRoute allowedRoles={['admin', 'receptionist']}>
-                <QuickBooking />
-              </ProtectedRoute>
-            } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/appointments" element={
+                <ProtectedRoute>
+                  <Appointments />
+                </ProtectedRoute>
+              } />
+              <Route path="/patients" element={
+                <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                  <Patients />
+                </ProtectedRoute>
+              } />
+              <Route path="/doctors" element={
+                <ProtectedRoute>
+                  <Doctors />
+                </ProtectedRoute>
+              } />
+              <Route path="/waiting-list" element={
+                <ProtectedRoute allowedRoles={['admin', 'receptionist']}>
+                  <WaitingList />
+                </ProtectedRoute>
+              } />
+              <Route path="/medical-records" element={
+                <ProtectedRoute allowedRoles={['admin', 'doctor']}>
+                  <MedicalRecords />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                  <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              } />
+              <Route path="/users" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Users />
+                </ProtectedRoute>
+              } />
+              <Route path="/permissions" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Permissions />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="/quick-booking" element={
+                <ProtectedRoute allowedRoles={['admin', 'receptionist']}>
+                  <QuickBooking />
+                </ProtectedRoute>
+              } />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

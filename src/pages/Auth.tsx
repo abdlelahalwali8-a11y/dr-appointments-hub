@@ -45,29 +45,37 @@ const Auth = () => {
   });
 
   useEffect(() => {
+    let mounted = true;
+    
+    const fetchDoctors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('doctors')
+          .select(`
+            id,
+            user_id,
+            specialization,
+            profiles:user_id (
+              full_name
+            )
+          `)
+          .eq('is_available', true);
+
+        if (error) throw error;
+        if (mounted) {
+          setDoctors(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+      }
+    };
+    
     fetchDoctors();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
-
-  const fetchDoctors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('doctors')
-        .select(`
-          id,
-          user_id,
-          specialization,
-          profiles:user_id (
-            full_name
-          )
-        `)
-        .eq('is_available', true);
-
-      if (error) throw error;
-      setDoctors(data || []);
-    } catch (error) {
-      console.error('Error fetching doctors:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -340,17 +348,22 @@ const Auth = () => {
                     <Select
                       value={quickBookingData.doctorId}
                       onValueChange={(value) => setQuickBookingData({ ...quickBookingData, doctorId: value })}
-                      required
                     >
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1" id="booking-doctor">
                         <SelectValue placeholder="اختر الطبيب" />
                       </SelectTrigger>
                       <SelectContent>
-                        {doctors.map((doctor) => (
-                          <SelectItem key={doctor.id} value={doctor.id}>
-                            {doctor.profiles?.full_name} - {doctor.specialization}
+                        {doctors.length > 0 ? (
+                          doctors.map((doctor) => (
+                            <SelectItem key={doctor.id} value={doctor.id}>
+                              {doctor.profiles?.full_name || 'غير معروف'} - {doctor.specialization}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-doctors" disabled>
+                            لا يوجد أطباء متاحين
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
