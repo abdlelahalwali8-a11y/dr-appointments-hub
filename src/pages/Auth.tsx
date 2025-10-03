@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Stethoscope, Calendar } from 'lucide-react';
+import { Loader2, Stethoscope, Calendar, Search, User, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -39,10 +40,16 @@ const Auth = () => {
     fullName: '',
     age: '',
     phone: '',
+    city: '',
+    notes: '',
     doctorId: '',
     appointmentDate: '',
     appointmentTime: '',
   });
+
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -125,40 +132,86 @@ const Auth = () => {
     setIsLoading(false);
   };
 
+  const searchPatient = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .or(`full_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        .limit(5);
+
+      if (error) throw error;
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handlePatientSelect = (patient: any) => {
+    setSelectedPatient(patient);
+    setQuickBookingData({
+      ...quickBookingData,
+      fullName: patient.full_name,
+      phone: patient.phone,
+      age: patient.age?.toString() || '',
+      city: patient.city || '',
+      notes: patient.notes || ''
+    });
+    setSearchResults([]);
+  };
+
   const handleQuickBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Create patient first
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .insert({
-          full_name: quickBookingData.fullName,
-          phone: quickBookingData.phone,
-          date_of_birth: new Date(new Date().getFullYear() - parseInt(quickBookingData.age), 0, 1).toISOString().split('T')[0],
-        })
-        .select()
-        .single();
+      let patientId = selectedPatient?.id;
 
-      if (patientError) throw patientError;
+      // إذا لم يكن هناك مريض محدد، أنشئ مريض جديد
+      if (!patientId) {
+        const { data: patientData, error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            full_name: quickBookingData.fullName,
+            phone: quickBookingData.phone,
+            age: quickBookingData.age ? parseInt(quickBookingData.age) : null,
+            city: quickBookingData.city || null,
+            notes: quickBookingData.notes || null,
+          })
+          .select()
+          .single();
 
-      // Create appointment
+        if (patientError) throw patientError;
+        patientId = patientData.id;
+      }
+
+      // إنشاء موعد
       const { error: appointmentError } = await supabase
         .from('appointments')
         .insert({
-          patient_id: patientData.id,
+          patient_id: patientId,
           doctor_id: quickBookingData.doctorId,
           appointment_date: quickBookingData.appointmentDate,
           appointment_time: quickBookingData.appointmentTime,
           status: 'scheduled',
+          notes: quickBookingData.notes || null,
         });
 
       if (appointmentError) throw appointmentError;
 
       toast({
         title: "تم الحجز بنجاح",
-        description: "سيتم التواصل معك قريباً لتأكيد الموعد",
+        description: selectedPatient 
+          ? "تم حجز موعد جديد للمريض" 
+          : "تم إضافة المريض وحجز الموعد بنجاح",
       });
 
       // Reset form
@@ -166,14 +219,20 @@ const Auth = () => {
         fullName: '',
         age: '',
         phone: '',
+        city: '',
+        notes: '',
         doctorId: '',
         appointmentDate: '',
         appointmentTime: '',
       });
+      setSelectedPatient(null);
+      setSearchResults([]);
     } catch (error: any) {
       toast({
         title: "خطأ",
-        description: error.message || "فشل في حجز الموعد",
+        description: error.message.includes('unique') 
+          ? "رقم الهاتف مسجل مسبقاً" 
+          : error.message || "فشل في حجز الموعد",
         variant: "destructive",
       });
     } finally {
@@ -306,16 +365,81 @@ const Auth = () => {
 
               <TabsContent value="booking">
                 <form onSubmit={handleQuickBooking} className="space-y-4">
+                  {/* بحث عن مريض */}
                   <div>
-                    <Label htmlFor="booking-name">الاسم الكامل</Label>
+                    <Label htmlFor="search-patient">
+                      <Search className="inline w-4 h-4 ml-2" />
+                      بحث عن مريض موجود
+                    </Label>
                     <Input
-                      id="booking-name"
+                      id="search-patient"
                       type="text"
-                      value={quickBookingData.fullName}
-                      onChange={(e) => setQuickBookingData({ ...quickBookingData, fullName: e.target.value })}
-                      required
+                      placeholder="ابحث بالاسم أو رقم الهاتف..."
+                      onChange={(e) => searchPatient(e.target.value)}
                       className="mt-1"
                     />
+                    {isSearching && (
+                      <p className="text-xs text-muted-foreground mt-1">جاري البحث...</p>
+                    )}
+                    {searchResults.length > 0 && (
+                      <div className="border rounded-lg mt-2 max-h-32 overflow-y-auto">
+                        {searchResults.map((patient) => (
+                          <div
+                            key={patient.id}
+                            className="p-2 hover:bg-accent cursor-pointer border-b last:border-b-0 text-sm"
+                            onClick={() => handlePatientSelect(patient)}
+                          >
+                            <p className="font-medium">{patient.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{patient.phone}</p>
+                            {patient.age && <p className="text-xs text-muted-foreground">العمر: {patient.age}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedPatient && (
+                    <Alert className="bg-primary/5">
+                      <User className="h-4 w-4" />
+                      <AlertDescription className="flex items-center justify-between">
+                        <span>مريض محدد: {selectedPatient.full_name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPatient(null);
+                            setQuickBookingData({
+                              ...quickBookingData,
+                              fullName: '',
+                              phone: '',
+                              age: '',
+                              city: '',
+                              notes: ''
+                            });
+                          }}
+                        >
+                          إلغاء
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium mb-3">
+                      {selectedPatient ? 'بيانات المريض' : 'مريض جديد'}
+                    </h4>
+                    <div>
+                      <Label htmlFor="booking-name">الاسم الكامل</Label>
+                      <Input
+                        id="booking-name"
+                        type="text"
+                        value={quickBookingData.fullName}
+                        onChange={(e) => setQuickBookingData({ ...quickBookingData, fullName: e.target.value })}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -332,7 +456,10 @@ const Auth = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="booking-phone">رقم الهاتف</Label>
+                      <Label htmlFor="booking-phone">
+                        <Phone className="inline w-3 h-3 ml-1" />
+                        رقم الهاتف
+                      </Label>
                       <Input
                         id="booking-phone"
                         type="tel"
@@ -342,6 +469,27 @@ const Auth = () => {
                         className="mt-1"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="booking-city">المدينة (اختياري)</Label>
+                    <Input
+                      id="booking-city"
+                      type="text"
+                      value={quickBookingData.city}
+                      onChange={(e) => setQuickBookingData({ ...quickBookingData, city: e.target.value })}
+                      className="mt-1"
+                      placeholder="المدينة"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="booking-notes">ملاحظات (اختياري)</Label>
+                    <textarea
+                      id="booking-notes"
+                      value={quickBookingData.notes}
+                      onChange={(e) => setQuickBookingData({ ...quickBookingData, notes: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg bg-background min-h-[60px] mt-1"
+                      placeholder="الأعراض أو ملاحظات إضافية..."
+                    />
                   </div>
                   <div>
                     <Label htmlFor="booking-doctor">الطبيب</Label>

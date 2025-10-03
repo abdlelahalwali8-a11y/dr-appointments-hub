@@ -342,9 +342,11 @@ export type Database = {
       patients: {
         Row: {
           address: string | null
+          age: number | null
           allergies: string | null
           blood_type: string | null
           chronic_conditions: string | null
+          city: string | null
           created_at: string
           current_medications: string | null
           date_of_birth: string | null
@@ -355,15 +357,18 @@ export type Database = {
           id: string
           insurance_info: string | null
           medical_history: string | null
+          notes: string | null
           phone: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           address?: string | null
+          age?: number | null
           allergies?: string | null
           blood_type?: string | null
           chronic_conditions?: string | null
+          city?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
@@ -374,15 +379,18 @@ export type Database = {
           id?: string
           insurance_info?: string | null
           medical_history?: string | null
+          notes?: string | null
           phone: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           address?: string | null
+          age?: number | null
           allergies?: string | null
           blood_type?: string | null
           chronic_conditions?: string | null
+          city?: string | null
           created_at?: string
           current_medications?: string | null
           date_of_birth?: string | null
@@ -393,6 +401,7 @@ export type Database = {
           id?: string
           insurance_info?: string | null
           medical_history?: string | null
+          notes?: string | null
           phone?: string
           updated_at?: string
           user_id?: string | null

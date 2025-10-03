@@ -19,6 +19,9 @@ interface Patient {
   full_name: string;
   phone: string;
   email?: string;
+  age?: number;
+  city?: string;
+  notes?: string;
   date_of_birth?: string;
   gender?: string;
   address?: string;
@@ -43,6 +46,9 @@ const Patients = () => {
   const [newPatient, setNewPatient] = useState({
     full_name: '',
     phone: '',
+    age: '',
+    city: '',
+    notes: '',
     email: '',
     date_of_birth: '',
     gender: '',
@@ -95,6 +101,7 @@ const Patients = () => {
           .from('patients')
           .update({
             ...newPatient,
+            age: newPatient.age ? parseInt(newPatient.age) : null,
             date_of_birth: newPatient.date_of_birth || null,
             gender: newPatient.gender || null,
           })
@@ -112,6 +119,7 @@ const Patients = () => {
           .from('patients')
           .insert([{
             ...newPatient,
+            age: newPatient.age ? parseInt(newPatient.age) : null,
             date_of_birth: newPatient.date_of_birth || null,
             gender: newPatient.gender || null,
           }]);
@@ -129,6 +137,9 @@ const Patients = () => {
       setNewPatient({
         full_name: '',
         phone: '',
+        age: '',
+        city: '',
+        notes: '',
         email: '',
         date_of_birth: '',
         gender: '',
@@ -152,6 +163,9 @@ const Patients = () => {
     setNewPatient({
       full_name: patient.full_name,
       phone: patient.phone,
+      age: patient.age?.toString() || '',
+      city: patient.city || '',
+      notes: patient.notes || '',
       email: patient.email || '',
       date_of_birth: patient.date_of_birth || '',
       gender: patient.gender || '',
@@ -226,6 +240,9 @@ const Patients = () => {
                 setNewPatient({
                   full_name: '',
                   phone: '',
+                  age: '',
+                  city: '',
+                  notes: '',
                   email: '',
                   date_of_birth: '',
                   gender: '',
@@ -264,6 +281,27 @@ const Patients = () => {
                       value={newPatient.phone}
                       onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
                       required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="age">العمر *</Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      min="0"
+                      max="150"
+                      value={newPatient.age}
+                      onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city">المدينة</Label>
+                    <Input
+                      id="city"
+                      value={newPatient.city}
+                      onChange={(e) => setNewPatient({ ...newPatient, city: e.target.value })}
+                      placeholder="اختياري"
                     />
                   </div>
                   <div>
@@ -306,6 +344,16 @@ const Patients = () => {
                       placeholder="مثل: O+, A-, B+"
                     />
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="notes">ملاحظات</Label>
+                  <textarea
+                    id="notes"
+                    value={newPatient.notes}
+                    onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[60px]"
+                    placeholder="ملاحظات إضافية (اختياري)..."
+                  />
                 </div>
                 <div>
                   <Label htmlFor="address">العنوان</Label>
