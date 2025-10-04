@@ -49,13 +49,6 @@ const Patients = () => {
     age: '',
     city: '',
     notes: '',
-    email: '',
-    date_of_birth: '',
-    gender: '',
-    address: '',
-    medical_history: '',
-    allergies: '',
-    blood_type: '',
   });
 
   const fetchPatients = async () => {
@@ -100,10 +93,11 @@ const Patients = () => {
         const { error } = await supabase
           .from('patients')
           .update({
-            ...newPatient,
+            full_name: newPatient.full_name,
+            phone: newPatient.phone,
             age: newPatient.age ? parseInt(newPatient.age) : null,
-            date_of_birth: newPatient.date_of_birth || null,
-            gender: newPatient.gender || null,
+            city: newPatient.city || null,
+            notes: newPatient.notes || null,
           })
           .eq('id', editingPatient.id);
 
@@ -118,10 +112,11 @@ const Patients = () => {
         const { error } = await supabase
           .from('patients')
           .insert([{
-            ...newPatient,
+            full_name: newPatient.full_name,
+            phone: newPatient.phone,
             age: newPatient.age ? parseInt(newPatient.age) : null,
-            date_of_birth: newPatient.date_of_birth || null,
-            gender: newPatient.gender || null,
+            city: newPatient.city || null,
+            notes: newPatient.notes || null,
           }]);
 
         if (error) throw error;
@@ -140,13 +135,6 @@ const Patients = () => {
         age: '',
         city: '',
         notes: '',
-        email: '',
-        date_of_birth: '',
-        gender: '',
-        address: '',
-        medical_history: '',
-        allergies: '',
-        blood_type: '',
       });
     } catch (error: any) {
       console.error('Error saving patient:', error);
@@ -166,13 +154,6 @@ const Patients = () => {
       age: patient.age?.toString() || '',
       city: patient.city || '',
       notes: patient.notes || '',
-      email: patient.email || '',
-      date_of_birth: patient.date_of_birth || '',
-      gender: patient.gender || '',
-      address: patient.address || '',
-      medical_history: patient.medical_history || '',
-      allergies: patient.allergies || '',
-      blood_type: patient.blood_type || '',
     });
     setIsDialogOpen(true);
   };
@@ -243,13 +224,6 @@ const Patients = () => {
                   age: '',
                   city: '',
                   notes: '',
-                  email: '',
-                  date_of_birth: '',
-                  gender: '',
-                  address: '',
-                  medical_history: '',
-                  allergies: '',
-                  blood_type: '',
                 });
               }
             }}>
@@ -272,115 +246,54 @@ const Patients = () => {
                       value={newPatient.full_name}
                       onChange={(e) => setNewPatient({ ...newPatient, full_name: e.target.value })}
                       required
+                      className="mt-1"
                     />
                   </div>
                   <div>
                     <Label htmlFor="phone">رقم الهاتف *</Label>
                     <Input
                       id="phone"
+                      type="tel"
                       value={newPatient.phone}
                       onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
                       required
+                      className="mt-1"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="age">العمر *</Label>
                     <Input
                       id="age"
                       type="number"
-                      min="0"
+                      min="1"
                       max="150"
                       value={newPatient.age}
                       onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
                       required
+                      className="mt-1"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="city">المدينة</Label>
+                    <Label htmlFor="city">المدينة (اختياري)</Label>
                     <Input
                       id="city"
                       value={newPatient.city}
                       onChange={(e) => setNewPatient({ ...newPatient, city: e.target.value })}
-                      placeholder="اختياري"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">البريد الإلكتروني</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newPatient.email}
-                      onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="date_of_birth">تاريخ الميلاد</Label>
-                    <Input
-                      id="date_of_birth"
-                      type="date"
-                      value={newPatient.date_of_birth}
-                      onChange={(e) => setNewPatient({ ...newPatient, date_of_birth: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="gender">الجنس</Label>
-                    <select
-                      id="gender"
-                      value={newPatient.gender}
-                      onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg bg-background"
-                    >
-                      <option value="">اختر الجنس</option>
-                      <option value="male">ذكر</option>
-                      <option value="female">أنثى</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="blood_type">فصيلة الدم</Label>
-                    <Input
-                      id="blood_type"
-                      value={newPatient.blood_type}
-                      onChange={(e) => setNewPatient({ ...newPatient, blood_type: e.target.value })}
-                      placeholder="مثل: O+, A-, B+"
+                      placeholder="المدينة"
+                      className="mt-1"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="notes">ملاحظات</Label>
+                  <Label htmlFor="notes">ملاحظات (اختياري)</Label>
                   <textarea
                     id="notes"
                     value={newPatient.notes}
                     onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[60px]"
-                    placeholder="ملاحظات إضافية (اختياري)..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="address">العنوان</Label>
-                  <Input
-                    id="address"
-                    value={newPatient.address}
-                    onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="medical_history">التاريخ الطبي</Label>
-                  <textarea
-                    id="medical_history"
-                    value={newPatient.medical_history}
-                    onChange={(e) => setNewPatient({ ...newPatient, medical_history: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px]"
-                    placeholder="الأمراض السابقة، العمليات، إلخ..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="allergies">الحساسية</Label>
-                  <textarea
-                    id="allergies"
-                    value={newPatient.allergies}
-                    onChange={(e) => setNewPatient({ ...newPatient, allergies: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[60px]"
-                    placeholder="الحساسية من الأدوية أو الأطعمة..."
+                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px] mt-1"
+                    placeholder="ملاحظات إضافية..."
                   />
                 </div>
                 <div className="flex gap-2 pt-4">
