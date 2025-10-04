@@ -4,10 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Shield, Users, Settings, Eye, Edit, Trash2, Plus, UserCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Permission {
   id: string;
@@ -22,6 +25,7 @@ interface RolePermission {
 }
 
 const Permissions = () => {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -120,6 +124,99 @@ const Permissions = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const updateUserRole = async (userId: string, newRole: string) => {
+    try {
+      const roleValue = newRole as 'admin' | 'doctor' | 'receptionist' | 'patient';
+      
+      // Update role in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: roleValue })
+        .eq('user_id', userId);
+
+      if (profileError) throw profileError;
+
+      // Update role in user_roles table
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert([{ user_id: userId, role: roleValue }]);
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث دور المستخدم بنجاح",
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحديث دور المستخدم",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: !currentStatus })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم التحديث",
+        description: `تم ${!currentStatus ? 'تفعيل' : 'تعطيل'} المستخدم بنجاح`,
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحديث حالة المستخدم",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string, userProfileId: string) => {
+    try {
+      // Delete from profiles (will cascade to user_roles)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userProfileId);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف المستخدم بنجاح",
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف المستخدم",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getRolePermissions = (role: string): string[] => {
     const rolePerms = defaultRolePermissions.find(rp => rp.role === role);
@@ -263,8 +360,8 @@ const Permissions = () => {
                 </div>
               ) : (
                 users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 bg-accent/20 rounded-lg">
-                    <div className="flex items-center gap-4">
+                  <div key={user.id} className="flex items-center justify-between p-4 bg-accent/20 rounded-lg gap-4">
+                    <div className="flex items-center gap-4 flex-1">
                       <Avatar className="h-12 w-12">
                         <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                           {user.full_name.split(' ')[0][0]}
@@ -276,18 +373,85 @@ const Permissions = () => {
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Badge className={`${getRoleBadgeColor(user.role)}`}>
-                        {getRoleLabel(user.role)}
-                      </Badge>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Shield className="w-4 h-4" />
-                        {getRolePermissions(user.role).length} صلاحية
+                    
+                    {isAdmin && (
+                      <div className="flex items-center gap-3">
+                        {/* Role Selector */}
+                        <Select
+                          value={user.role}
+                          onValueChange={(value) => updateUserRole(user.user_id, value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">مدير النظام</SelectItem>
+                            <SelectItem value="doctor">طبيب</SelectItem>
+                            <SelectItem value="receptionist">موظف استقبال</SelectItem>
+                            <SelectItem value="patient">مريض</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Permissions Count */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Shield className="w-4 h-4" />
+                          <span className="whitespace-nowrap">{getRolePermissions(user.role).length} صلاحية</span>
+                        </div>
+
+                        {/* Active Status Toggle */}
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.is_active}
+                            onCheckedChange={() => toggleUserStatus(user.user_id, user.is_active)}
+                          />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            {user.is_active ? "نشط" : "معطل"}
+                          </span>
+                        </div>
+
+                        {/* Delete Button */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                هل أنت متأكد من حذف المستخدم "{user.full_name}"؟
+                                سيتم حذف جميع البيانات المرتبطة به بشكل نهائي.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteUser(user.user_id, user.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                حذف
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
-                      <Badge variant={user.is_active ? "default" : "secondary"}>
-                        {user.is_active ? "نشط" : "غير نشط"}
-                      </Badge>
-                    </div>
+                    )}
+                    
+                    {!isAdmin && (
+                      <div className="flex items-center gap-4">
+                        <Badge className={`${getRoleBadgeColor(user.role)}`}>
+                          {getRoleLabel(user.role)}
+                        </Badge>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Shield className="w-4 h-4" />
+                          {getRolePermissions(user.role).length} صلاحية
+                        </div>
+                        <Badge variant={user.is_active ? "default" : "secondary"}>
+                          {user.is_active ? "نشط" : "غير نشط"}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
