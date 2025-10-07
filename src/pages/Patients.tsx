@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Search, Plus, Phone, Mail, MapPin, Calendar, Heart } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, MapPin, Calendar, Heart, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import MedicalRecordDialog from '@/components/medical/MedicalRecordDialog';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -43,6 +44,8 @@ const Patients = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [isMedicalRecordOpen, setIsMedicalRecordOpen] = useState(false);
+  const [selectedPatientForRecord, setSelectedPatientForRecord] = useState<Patient | null>(null);
   const [newPatient, setNewPatient] = useState({
     full_name: '',
     phone: '',
@@ -363,10 +366,18 @@ const Patients = () => {
                           <h4 className="text-lg font-semibold text-foreground">
                             {patient.full_name}
                           </h4>
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(patient.created_at).toLocaleDateString('ar-SA')}
-                            </div>
+                           <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedPatientForRecord(patient);
+                                setIsMedicalRecordOpen(true);
+                              }}
+                            >
+                              <FileText className="w-4 h-4 ml-1" />
+                              السجل الطبي
+                            </Button>
                             {permissions.canEditPatients && (
                               <Button
                                 size="sm"
@@ -426,6 +437,19 @@ const Patients = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Medical Record Dialog */}
+        {selectedPatientForRecord && (
+          <MedicalRecordDialog
+            isOpen={isMedicalRecordOpen}
+            onClose={() => {
+              setIsMedicalRecordOpen(false);
+              setSelectedPatientForRecord(null);
+            }}
+            patientId={selectedPatientForRecord.id}
+            patientName={selectedPatientForRecord.full_name}
+          />
+        )}
       </div>
     </Layout>
   );

@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Stethoscope, Search, Plus, Phone, Mail, Clock, DollarSign, Calendar } from 'lucide-react';
+import { Stethoscope, Search, Plus, Phone, Mail, Clock, DollarSign, Calendar, Edit, Trash2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
@@ -40,6 +41,10 @@ const Doctors = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newDoctor, setNewDoctor] = useState({
     user_id: '',
     specialization: '',
@@ -105,6 +110,7 @@ const Doctors = () => {
 
   const handleAddDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       // First update the profile role to doctor
@@ -132,6 +138,16 @@ const Doctors = () => {
 
       if (doctorError) throw doctorError;
 
+      // Add doctor role to user_roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: newDoctor.user_id,
+          role: 'doctor',
+        });
+
+      if (roleError) throw roleError;
+
       toast({
         title: "نجح الإضافة",
         description: "تم إضافة الطبيب بنجاح",
@@ -156,6 +172,80 @@ const Doctors = () => {
         description: error.message || "فشل في إضافة الطبيب",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditDoctor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDoctor) return;
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('doctors')
+        .update({
+          specialization: selectedDoctor.specialization,
+          license_number: selectedDoctor.license_number,
+          consultation_fee: selectedDoctor.consultation_fee,
+          return_days: selectedDoctor.return_days,
+          working_hours_start: selectedDoctor.working_hours_start,
+          working_hours_end: selectedDoctor.working_hours_end,
+          bio: selectedDoctor.bio,
+          experience_years: selectedDoctor.experience_years,
+        })
+        .eq('id', selectedDoctor.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث بيانات الطبيب بنجاح",
+      });
+
+      setIsEditDialogOpen(false);
+      setSelectedDoctor(null);
+      fetchDoctors();
+    } catch (error: any) {
+      toast({
+        title: "خطأ",
+        description: error.message || "فشل في تحديث بيانات الطبيب",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteDoctor = async () => {
+    if (!selectedDoctor) return;
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('doctors')
+        .delete()
+        .eq('id', selectedDoctor.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف الطبيب بنجاح",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setSelectedDoctor(null);
+      fetchDoctors();
+    } catch (error: any) {
+      toast({
+        title: "خطأ",
+        description: error.message || "فشل في حذف الطبيب",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -315,19 +405,11 @@ const Doctors = () => {
                     placeholder="خبرات، شهادات، تخصصات فرعية..."
                   />
                 </div>
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" variant="medical" className="flex-1">
-                    إضافة الطبيب
+                <DialogFooter>
+                  <Button type="submit" variant="medical" disabled={isSubmitting}>
+                    {isSubmitting ? "جاري الإضافة..." : "إضافة الطبيب"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="flex-1"
-                  >
-                    إلغاء
-                  </Button>
-                </div>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -384,18 +466,62 @@ const Doctors = () => {
                             </h4>
                             <p className="text-primary font-medium">{doctor.specialization}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-2">
                             <Badge variant={doctor.is_available ? "default" : "secondary"}>
                               {doctor.is_available ? "متاح" : "غير متاح"}
                             </Badge>
                             {permissions.canManageDoctors && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => toggleDoctorAvailability(doctor.id, doctor.is_available)}
-                              >
-                                {doctor.is_available ? "إلغاء التفعيل" : "تفعيل"}
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedDoctor(doctor);
+                                    setIsEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => toggleDoctorAvailability(doctor.id, doctor.is_available)}
+                                >
+                                  {doctor.is_available ? "إلغاء التفعيل" : "تفعيل"}
+                                </Button>
+                                <AlertDialog open={isDeleteDialogOpen && selectedDoctor?.id === doctor.id} onOpenChange={(open) => {
+                                  setIsDeleteDialogOpen(open);
+                                  if (!open) setSelectedDoctor(null);
+                                }}>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => setSelectedDoctor(doctor)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent dir="rtl">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        سيتم حذف الطبيب نهائياً ولا يمكن التراجع عن هذا الإجراء.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={handleDeleteDoctor}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        disabled={isSubmitting}
+                                      >
+                                        {isSubmitting ? "جاري الحذف..." : "حذف"}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
                             )}
                           </div>
                         </div>
@@ -430,6 +556,98 @@ const Doctors = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>تعديل بيانات الطبيب</DialogTitle>
+            </DialogHeader>
+            {selectedDoctor && (
+              <form onSubmit={handleEditDoctor} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-specialization">التخصص *</Label>
+                    <Input
+                      id="edit-specialization"
+                      value={selectedDoctor.specialization}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, specialization: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-license">رقم الترخيص</Label>
+                    <Input
+                      id="edit-license"
+                      value={selectedDoctor.license_number || ''}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, license_number: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-fee">رسوم الكشف (ر.س)</Label>
+                    <Input
+                      id="edit-fee"
+                      type="number"
+                      step="0.01"
+                      value={selectedDoctor.consultation_fee}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, consultation_fee: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-return">أيام العودة المجانية</Label>
+                    <Input
+                      id="edit-return"
+                      type="number"
+                      value={selectedDoctor.return_days}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, return_days: parseInt(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-start">بداية الدوام</Label>
+                    <Input
+                      id="edit-start"
+                      type="time"
+                      value={selectedDoctor.working_hours_start}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, working_hours_start: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-end">نهاية الدوام</Label>
+                    <Input
+                      id="edit-end"
+                      type="time"
+                      value={selectedDoctor.working_hours_end}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, working_hours_end: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-experience">سنوات الخبرة</Label>
+                    <Input
+                      id="edit-experience"
+                      type="number"
+                      value={selectedDoctor.experience_years}
+                      onChange={(e) => setSelectedDoctor({ ...selectedDoctor, experience_years: parseInt(e.target.value) })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-bio">نبذة عن الطبيب</Label>
+                  <textarea
+                    id="edit-bio"
+                    value={selectedDoctor.bio || ''}
+                    onChange={(e) => setSelectedDoctor({ ...selectedDoctor, bio: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-background min-h-[80px]"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" variant="medical" disabled={isSubmitting}>
+                    {isSubmitting ? "جاري التحديث..." : "تحديث البيانات"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
