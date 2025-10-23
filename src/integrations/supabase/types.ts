@@ -495,10 +495,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { user_uuid: string }; Returns: boolean }
       setup_admin_user: {
         Args: { admin_email: string; admin_full_name?: string }
         Returns: undefined
