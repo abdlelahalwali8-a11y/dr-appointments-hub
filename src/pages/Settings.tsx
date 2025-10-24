@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, Building, Clock, Bell, Shield, Save, Upload } from 'lucide-react';
+import { Settings as SettingsIcon, Building, Clock, Bell, Shield, Save, Upload, DollarSign, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -26,6 +26,18 @@ interface CenterSettings {
   sms_notifications_enabled: boolean;
   email_notifications_enabled: boolean;
   whatsapp_notifications_enabled: boolean;
+  currency_code: string;
+  currency_symbol: string;
+  currency_name: string;
+  auto_create_medical_records: boolean;
+  require_appointment_confirmation: boolean;
+  allow_online_booking: boolean;
+  show_doctor_availability: boolean;
+  enable_sms_reminders: boolean;
+  reminder_hours_before: number;
+  max_appointments_per_day: number;
+  emergency_contact_phone?: string;
+  support_email?: string;
 }
 
 const Settings = () => {
@@ -51,9 +63,9 @@ const Settings = () => {
         // Create default settings if none exist
         const defaultSettings = {
           center_name: 'مركز د أحمد قايد سالم الطبي',
-          center_phone: '+966501234567',
+          center_phone: '+967771234567',
           center_email: '',
-          center_address: 'الرياض، المملكة العربية السعودية',
+          center_address: 'صنعاء، اليمن',
           working_hours_start: '08:00',
           working_hours_end: '17:00',
           working_days: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
@@ -63,6 +75,16 @@ const Settings = () => {
           sms_notifications_enabled: false,
           email_notifications_enabled: true,
           whatsapp_notifications_enabled: false,
+          currency_code: 'YER',
+          currency_symbol: 'ر.ي',
+          currency_name: 'ريال يمني',
+          auto_create_medical_records: true,
+          require_appointment_confirmation: false,
+          allow_online_booking: true,
+          show_doctor_availability: true,
+          enable_sms_reminders: false,
+          reminder_hours_before: 24,
+          max_appointments_per_day: 50,
         };
 
         const { data: newSettings, error: insertError } = await supabase
@@ -111,6 +133,18 @@ const Settings = () => {
           sms_notifications_enabled: settings.sms_notifications_enabled,
           email_notifications_enabled: settings.email_notifications_enabled,
           whatsapp_notifications_enabled: settings.whatsapp_notifications_enabled,
+          currency_code: settings.currency_code,
+          currency_symbol: settings.currency_symbol,
+          currency_name: settings.currency_name,
+          auto_create_medical_records: settings.auto_create_medical_records,
+          require_appointment_confirmation: settings.require_appointment_confirmation,
+          allow_online_booking: settings.allow_online_booking,
+          show_doctor_availability: settings.show_doctor_availability,
+          enable_sms_reminders: settings.enable_sms_reminders,
+          reminder_hours_before: settings.reminder_hours_before,
+          max_appointments_per_day: settings.max_appointments_per_day,
+          emergency_contact_phone: settings.emergency_contact_phone,
+          support_email: settings.support_email,
         })
         .eq('id', settings.id);
 
@@ -378,6 +412,115 @@ const Settings = () => {
                   id="whatsapp_notifications"
                   checked={settings.whatsapp_notifications_enabled}
                   onCheckedChange={(checked) => setSettings({ ...settings, whatsapp_notifications_enabled: checked })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Currency Settings */}
+          <Card className="card-gradient border-0 medical-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary" />
+                إعدادات العملة
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="currency_name">اسم العملة</Label>
+                <Input
+                  id="currency_name"
+                  value={settings.currency_name}
+                  onChange={(e) => setSettings({ ...settings, currency_name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="currency_code">كود العملة</Label>
+                  <Input
+                    id="currency_code"
+                    value={settings.currency_code}
+                    onChange={(e) => setSettings({ ...settings, currency_code: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="currency_symbol">رمز العملة</Label>
+                  <Input
+                    id="currency_symbol"
+                    value={settings.currency_symbol}
+                    onChange={(e) => setSettings({ ...settings, currency_symbol: e.target.value })}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Advanced Settings */}
+          <Card className="card-gradient border-0 medical-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary" />
+                الإعدادات المتقدمة
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="auto_create_medical_records">إنشاء السجل الطبي تلقائياً</Label>
+                  <p className="text-sm text-muted-foreground">إنشاء سجل طبي عند إكمال الموعد</p>
+                </div>
+                <Switch
+                  id="auto_create_medical_records"
+                  checked={settings.auto_create_medical_records}
+                  onCheckedChange={(checked) => setSettings({ ...settings, auto_create_medical_records: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="allow_online_booking">السماح بالحجز الإلكتروني</Label>
+                  <p className="text-sm text-muted-foreground">تمكين المرضى من الحجز عبر الإنترنت</p>
+                </div>
+                <Switch
+                  id="allow_online_booking"
+                  checked={settings.allow_online_booking}
+                  onCheckedChange={(checked) => setSettings({ ...settings, allow_online_booking: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="show_doctor_availability">عرض توفر الأطباء</Label>
+                  <p className="text-sm text-muted-foreground">إظهار حالة توفر الأطباء للمرضى</p>
+                </div>
+                <Switch
+                  id="show_doctor_availability"
+                  checked={settings.show_doctor_availability}
+                  onCheckedChange={(checked) => setSettings({ ...settings, show_doctor_availability: checked })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="max_appointments_per_day">الحد الأقصى للمواعيد يومياً</Label>
+                <Input
+                  id="max_appointments_per_day"
+                  type="number"
+                  value={settings.max_appointments_per_day}
+                  onChange={(e) => setSettings({ ...settings, max_appointments_per_day: parseInt(e.target.value) || 50 })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="emergency_contact_phone">هاتف الطوارئ</Label>
+                <Input
+                  id="emergency_contact_phone"
+                  value={settings.emergency_contact_phone || ''}
+                  onChange={(e) => setSettings({ ...settings, emergency_contact_phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="support_email">بريد الدعم الفني</Label>
+                <Input
+                  id="support_email"
+                  type="email"
+                  value={settings.support_email || ''}
+                  onChange={(e) => setSettings({ ...settings, support_email: e.target.value })}
                 />
               </div>
             </CardContent>

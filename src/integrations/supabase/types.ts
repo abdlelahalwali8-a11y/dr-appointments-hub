@@ -105,7 +105,9 @@ export type Database = {
       }
       center_settings: {
         Row: {
+          allow_online_booking: boolean | null
           appointment_duration: number | null
+          auto_create_medical_records: boolean | null
           cancellation_hours: number | null
           center_address: string | null
           center_email: string | null
@@ -113,10 +115,20 @@ export type Database = {
           center_name: string
           center_phone: string | null
           created_at: string
+          currency_code: string | null
+          currency_name: string | null
+          currency_symbol: string | null
           email_notifications_enabled: boolean | null
+          emergency_contact_phone: string | null
+          enable_sms_reminders: boolean | null
           id: string
           max_advance_booking_days: number | null
+          max_appointments_per_day: number | null
+          reminder_hours_before: number | null
+          require_appointment_confirmation: boolean | null
+          show_doctor_availability: boolean | null
           sms_notifications_enabled: boolean | null
+          support_email: string | null
           updated_at: string
           whatsapp_notifications_enabled: boolean | null
           working_days: string[] | null
@@ -124,7 +136,9 @@ export type Database = {
           working_hours_start: string | null
         }
         Insert: {
+          allow_online_booking?: boolean | null
           appointment_duration?: number | null
+          auto_create_medical_records?: boolean | null
           cancellation_hours?: number | null
           center_address?: string | null
           center_email?: string | null
@@ -132,10 +146,20 @@ export type Database = {
           center_name?: string
           center_phone?: string | null
           created_at?: string
+          currency_code?: string | null
+          currency_name?: string | null
+          currency_symbol?: string | null
           email_notifications_enabled?: boolean | null
+          emergency_contact_phone?: string | null
+          enable_sms_reminders?: boolean | null
           id?: string
           max_advance_booking_days?: number | null
+          max_appointments_per_day?: number | null
+          reminder_hours_before?: number | null
+          require_appointment_confirmation?: boolean | null
+          show_doctor_availability?: boolean | null
           sms_notifications_enabled?: boolean | null
+          support_email?: string | null
           updated_at?: string
           whatsapp_notifications_enabled?: boolean | null
           working_days?: string[] | null
@@ -143,7 +167,9 @@ export type Database = {
           working_hours_start?: string | null
         }
         Update: {
+          allow_online_booking?: boolean | null
           appointment_duration?: number | null
+          auto_create_medical_records?: boolean | null
           cancellation_hours?: number | null
           center_address?: string | null
           center_email?: string | null
@@ -151,10 +177,20 @@ export type Database = {
           center_name?: string
           center_phone?: string | null
           created_at?: string
+          currency_code?: string | null
+          currency_name?: string | null
+          currency_symbol?: string | null
           email_notifications_enabled?: boolean | null
+          emergency_contact_phone?: string | null
+          enable_sms_reminders?: boolean | null
           id?: string
           max_advance_booking_days?: number | null
+          max_appointments_per_day?: number | null
+          reminder_hours_before?: number | null
+          require_appointment_confirmation?: boolean | null
+          show_doctor_availability?: boolean | null
           sms_notifications_enabled?: boolean | null
+          support_email?: string | null
           updated_at?: string
           whatsapp_notifications_enabled?: boolean | null
           working_days?: string[] | null

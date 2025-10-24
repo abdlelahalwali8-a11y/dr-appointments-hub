@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Search, Plus, Phone, Mail, MapPin, Calendar, Heart, FileText } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, MapPin, Calendar, Heart, FileText, TrendingUp, Activity, UserCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import MedicalRecordDialog from '@/components/medical/MedicalRecordDialog';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Pencil, Trash2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
+import StatsBar from '@/components/common/StatsBar';
 
 interface Patient {
   id: string;
@@ -189,7 +190,9 @@ const Patients = () => {
   const filteredPatients = patients.filter(patient =>
     patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm) ||
-    patient.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    patient.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.address?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -208,6 +211,20 @@ const Patients = () => {
   return (
     <Layout>
       <div className="p-6 space-y-6">
+        {/* Stats Bar */}
+        <StatsBar
+          stats={[
+            { label: 'إجمالي المرضى', value: patients.length, icon: Users, color: 'primary' },
+            { label: 'المرضى النشطين', value: patients.filter(p => p.user_id).length, icon: UserCheck, color: 'success' },
+            { label: 'مرضى جدد هذا الشهر', value: patients.filter(p => {
+              const created = new Date(p.created_at);
+              const now = new Date();
+              return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+            }).length, icon: TrendingUp, color: 'info' },
+            { label: 'مواعيد اليوم', value: '0', icon: Activity, color: 'warning' },
+          ]}
+        />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -324,7 +341,7 @@ const Patients = () => {
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="البحث بالاسم أو رقم الهاتف أو البريد الإلكتروني..."
+                placeholder="البحث السريع بالاسم أو رقم الهاتف أو البريد الإلكتروني أو المدينة..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"

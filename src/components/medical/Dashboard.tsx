@@ -1,17 +1,65 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, UserPlus, Clock, DollarSign, Activity } from "lucide-react";
+import { Calendar, Users, UserPlus, Clock, DollarSign, Activity, TrendingUp, FileText, AlertCircle } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { RecentAppointments } from "./RecentAppointments";
 import { QuickActions } from "./QuickActions";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import heroImage from "../../assets/medical-hero.jpg";
 
 const Dashboard = () => {
+  const [centerSettings, setCenterSettings] = useState<any>(null);
+  const [todayStats, setTodayStats] = useState({
+    appointments: 0,
+    patients: 0,
+    waiting: 0,
+    revenue: 0,
+  });
+
+  useEffect(() => {
+    fetchCenterSettings();
+    fetchTodayStats();
+  }, []);
+
+  const fetchCenterSettings = async () => {
+    const { data } = await supabase
+      .from('center_settings')
+      .select('*')
+      .single();
+    setCenterSettings(data);
+  };
+
+  const fetchTodayStats = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Fetch today's appointments
+    const { data: appointments } = await supabase
+      .from('appointments')
+      .select('*, cost')
+      .eq('appointment_date', today);
+
+    const totalRevenue = appointments?.reduce((sum, apt) => sum + (apt.cost || 0), 0) || 0;
+    const waiting = appointments?.filter(apt => apt.status === 'scheduled').length || 0;
+
+    // Fetch total active patients
+    const { count: patientsCount } = await supabase
+      .from('patients')
+      .select('*', { count: 'exact', head: true });
+
+    setTodayStats({
+      appointments: appointments?.length || 0,
+      patients: patientsCount || 0,
+      waiting,
+      revenue: totalRevenue,
+    });
+  };
+
   const stats = [
     {
       title: "مواعيد اليوم",
-      value: "24",
+      value: todayStats.appointments.toString(),
       description: "موعد مجدول",
       icon: Calendar,
       trend: "+12%",
@@ -19,7 +67,7 @@ const Dashboard = () => {
     },
     {
       title: "المرضى النشطين",
-      value: "156",
+      value: todayStats.patients.toString(),
       description: "مريض مسجل",
       icon: Users,
       trend: "+8%",
@@ -27,7 +75,7 @@ const Dashboard = () => {
     },
     {
       title: "في الانتظار",
-      value: "7",
+      value: todayStats.waiting.toString(),
       description: "مريض ينتظر",
       icon: Clock,
       trend: "0%",
@@ -35,8 +83,8 @@ const Dashboard = () => {
     },
     {
       title: "الإيرادات اليومية",
-      value: "12,450",
-      description: "ريال سعودي",
+      value: todayStats.revenue.toString(),
+      description: centerSettings?.currency_symbol || "ر.ي",
       icon: DollarSign,
       trend: "+15%",
       color: "success" as const
