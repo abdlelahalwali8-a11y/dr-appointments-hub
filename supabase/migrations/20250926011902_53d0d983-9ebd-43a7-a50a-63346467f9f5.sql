@@ -356,9 +356,7 @@ CREATE TRIGGER calculate_appointment_cost_trigger
   BEFORE UPDATE ON public.appointments
   FOR EACH ROW EXECUTE FUNCTION public.calculate_appointment_cost();
 
--- Insert default center settings
-INSERT INTO public.center_settings (center_name, center_phone, center_address)
-VALUES ('مركز د أحمد قايد سالم الطبي', '+966501234567', 'الرياض، المملكة العربية السعودية');
+
 
 -- Enable realtime for all tables
 ALTER TABLE public.profiles REPLICA IDENTITY FULL;

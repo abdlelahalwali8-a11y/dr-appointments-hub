@@ -203,4 +203,35 @@ All colors MUST be HSL for proper theming
   .transition-smooth {
     transition: var(--transition-smooth);
   }
+
+  /* Responsive utilities */
+  @media (max-width: 640px) {
+    .p-6 {
+      @apply p-4;
+    }
+
+    .text-3xl {
+      @apply text-2xl;
+    }
+
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+      @apply grid-cols-1;
+    }
+  }
+
+  /* Accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      @apply !transition-none !animate-none;
+    }
+  }
+
+  /* High contrast mode */
+  @media (prefers-contrast: more) {
+    .text-muted-foreground {
+      @apply text-foreground/80;
+    }
+  }
 }

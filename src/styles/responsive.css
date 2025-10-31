@@ -1,0 +1,142 @@
+/* Responsive Design Utilities */
+
+/* Mobile-first approach */
+@media (max-width: 640px) {
+  /* Adjust padding for small screens */
+  .p-6 {
+    @apply p-4;
+  }
+
+  /* Stack grid items on mobile */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    @apply grid-cols-1;
+  }
+
+  /* Adjust font sizes on mobile */
+  h1 {
+    @apply text-xl;
+  }
+
+  h2 {
+    @apply text-lg;
+  }
+
+  /* Full width buttons on mobile */
+  .btn-full-mobile {
+    @apply w-full;
+  }
+
+  /* Hide desktop-only elements */
+  .hidden-mobile {
+    @apply hidden;
+  }
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  /* Show tablet-only elements */
+  .hidden-tablet {
+    @apply hidden;
+  }
+}
+
+/* Desktop and up */
+@media (min-width: 1024px) {
+  /* Show desktop-only elements */
+  .hidden-desktop {
+    @apply hidden;
+  }
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Medical theme specific */
+.medical-shadow {
+  @apply shadow-md;
+}
+
+.card-gradient {
+  @apply bg-gradient-to-br from-card to-card/80;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground;
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2;
+}
+
+/* Prevent layout shift */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+
+  .print-only {
+    @apply block;
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar {
+    @apply h-screen overflow-y-auto;
+  }
+
+  main {
+    @apply max-h-screen overflow-y-auto;
+  }
+}
+
+/* Dark mode specific */
+@media (prefers-color-scheme: dark) {
+  .light-mode-only {
+    @apply hidden;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .dark-mode-only {
+    @apply hidden;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    @apply !transition-none !animate-none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: more) {
+  .text-muted-foreground {
+    @apply text-foreground/80;
+  }
+}
