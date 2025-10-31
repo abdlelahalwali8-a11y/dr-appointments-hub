@@ -1,72 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { FileText, Search, Plus, Calendar, User, Stethoscope, FileImage, Pill, Edit, Trash2, Eye, Activity, TrendingUp } from 'lucide-react';
+import { FileText, Plus, Calendar, User, Stethoscope, Edit, Trash2, Eye, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
-import StatsBar from '@/components/common/StatsBar';
+import SearchBar from '@/components/common/SearchBar';
+import { useSearch } from '@/hooks/useSearch';
+import DataTable, { Column } from '@/components/common/DataTable';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { useForm, FormErrors } from '@/hooks/useForm';
+import { TextInput, TextAreaField, SelectField } from '@/components/common/FormField';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MedicalRecord {
   id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_id?: string;
   visit_date: string;
   chief_complaint?: string;
   diagnosis?: string;
   treatment_plan?: string;
   prescribed_medications?: string;
   follow_up_instructions?: string;
-  vital_signs?: any;
+  vital_signs?: {
+    blood_pressure?: string;
+    temperature?: string;
+    heart_rate?: string;
+    weight?: string;
+  };
   patients: {
+    id: string;
     full_name: string;
     phone: string;
   };
   doctors: {
+    id: string;
     profiles: {
       full_name: string;
     };
   };
 }
 
+interface Patient {
+  id: string;
+  full_name: string;
+  phone: string;
+}
+
+interface Doctor {
+  id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 const MedicalRecords = () => {
   const permissions = usePermissions();
   const [records, setRecords] = useState<MedicalRecord[]>([]);
-  const [patients, setPatients] = useState<any[]>([]);
-  const [doctors, setDoctors] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    patient_id: '',
-    doctor_id: '',
-    appointment_id: '',
-    visit_date: new Date().toISOString().split('T')[0],
-    chief_complaint: '',
-    diagnosis: '',
-    treatment_plan: '',
-    prescribed_medications: '',
-    follow_up_instructions: '',
-    vital_signs: {
-      blood_pressure: '',
-      temperature: '',
-      heart_rate: '',
-      weight: '',
-    }
-  });
 
   const fetchRecords = async () => {
     try {
@@ -75,10 +80,12 @@ const MedicalRecords = () => {
         .select(`
           *,
           patients (
+            id,
             full_name,
             phone
           ),
           doctors (
+            id,
             profiles (
               full_name
             )
@@ -90,11 +97,7 @@ const MedicalRecords = () => {
       setRecords(data || []);
     } catch (error) {
       console.error('Error fetching medical records:', error);
-      toast({
-        title: "خطأ",
-        description: "فشل في تحميل السجلات الطبية",
-        variant: "destructive",
-      });
+      toast({ title: "خطأ", description: "فشل في تحميل السجلات الطبية", variant: "destructive" });
     }
   };
 
@@ -116,27 +119,18 @@ const MedicalRecords = () => {
     try {
       const { data, error } = await supabase
         .from('doctors')
-        .select('id, profiles(full_name), specialization')
-        .eq('is_available', true);
+        .select(`
+          id,
+          profiles (
+            full_name
+          )
+        `)
+        .order('created_at');
 
       if (error) throw error;
       setDoctors(data || []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
-    }
-  };
-
-  const fetchAppointments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('id, patient_id, doctor_id, appointment_date, patients(full_name)')
-        .order('appointment_date', { ascending: false });
-
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
     } finally {
       setLoading(false);
     }
@@ -146,9 +140,9 @@ const MedicalRecords = () => {
     fetchRecords();
     fetchPatients();
     fetchDoctors();
-    fetchAppointments();
   }, []);
 
+  // Real-time subscription
   useRealtimeSubscription({
     table: 'medical_records',
     onInsert: () => fetchRecords(),
@@ -156,92 +150,142 @@ const MedicalRecords = () => {
     onDelete: () => fetchRecords(),
   });
 
-  const handleAddRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // --- Add Record Form ---
+  const initialAddValues = {
+    patient_id: '',
+    doctor_id: '',
+    appointment_id: '',
+    visit_date: new Date().toISOString().split('T')[0],
+    chief_complaint: '',
+    diagnosis: '',
+    treatment_plan: '',
+    prescribed_medications: '',
+    follow_up_instructions: '',
+    blood_pressure: '',
+    temperature: '',
+    heart_rate: '',
+    weight: '',
+  };
 
+  const validateAdd = (values: typeof initialAddValues): FormErrors => {
+    const errors: FormErrors = {};
+    if (!values.patient_id) errors.patient_id = 'يجب اختيار مريض.';
+    if (!values.doctor_id) errors.doctor_id = 'يجب اختيار طبيب.';
+    if (!values.visit_date) errors.visit_date = 'تاريخ الزيارة مطلوب.';
+    return errors;
+  };
+
+  const handleAddRecord = async (values: typeof initialAddValues) => {
     try {
+      const vital_signs = {
+        blood_pressure: values.blood_pressure || null,
+        temperature: values.temperature || null,
+        heart_rate: values.heart_rate || null,
+        weight: values.weight || null,
+      };
+
       const { error } = await supabase
         .from('medical_records')
         .insert([{
-          patient_id: formData.patient_id,
-          doctor_id: formData.doctor_id,
-          appointment_id: formData.appointment_id || null,
-          visit_date: formData.visit_date,
-          chief_complaint: formData.chief_complaint,
-          diagnosis: formData.diagnosis,
-          treatment_plan: formData.treatment_plan,
-          prescribed_medications: formData.prescribed_medications,
-          follow_up_instructions: formData.follow_up_instructions,
-          vital_signs: formData.vital_signs,
+          patient_id: values.patient_id,
+          doctor_id: values.doctor_id,
+          appointment_id: values.appointment_id || null,
+          visit_date: values.visit_date,
+          chief_complaint: values.chief_complaint || null,
+          diagnosis: values.diagnosis || null,
+          treatment_plan: values.treatment_plan || null,
+          prescribed_medications: values.prescribed_medications || null,
+          follow_up_instructions: values.follow_up_instructions || null,
+          vital_signs,
         }]);
 
       if (error) throw error;
 
-      toast({
-        title: "تم الإضافة",
-        description: "تم إضافة السجل الطبي بنجاح",
-      });
-
-      setIsAddDialogOpen(false);
-      resetForm();
-      fetchRecords();
+      toast({ title: "نجح الإضافة", description: "تم إضافة السجل الطبي بنجاح" });
+      setIsDialogOpen(false);
+      addForm.resetForm();
     } catch (error: any) {
-      toast({
-        title: "خطأ",
-        description: error.message || "فشل في إضافة السجل الطبي",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error adding record:', error);
+      toast({ title: "خطأ", description: error.message || "فشل في إضافة السجل الطبي", variant: "destructive" });
     }
   };
 
-  const handleEditRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRecord) return;
+  const addForm = useForm({
+    initialValues: initialAddValues,
+    onSubmit: handleAddRecord,
+    validate: validateAdd,
+  });
 
-    setIsSubmitting(true);
+  // --- Edit Record Form ---
+  const initialEditValues = useMemo(() => ({
+    id: selectedRecord?.id || '',
+    patient_id: selectedRecord?.patient_id || '',
+    doctor_id: selectedRecord?.doctor_id || '',
+    appointment_id: selectedRecord?.appointment_id || '',
+    visit_date: selectedRecord?.visit_date || new Date().toISOString().split('T')[0],
+    chief_complaint: selectedRecord?.chief_complaint || '',
+    diagnosis: selectedRecord?.diagnosis || '',
+    treatment_plan: selectedRecord?.treatment_plan || '',
+    prescribed_medications: selectedRecord?.prescribed_medications || '',
+    follow_up_instructions: selectedRecord?.follow_up_instructions || '',
+    blood_pressure: selectedRecord?.vital_signs?.blood_pressure || '',
+    temperature: selectedRecord?.vital_signs?.temperature || '',
+    heart_rate: selectedRecord?.vital_signs?.heart_rate || '',
+    weight: selectedRecord?.vital_signs?.weight || '',
+  }), [selectedRecord]);
 
+  const validateEdit = (values: typeof initialEditValues): FormErrors => {
+    const errors: FormErrors = {};
+    if (!values.visit_date) errors.visit_date = 'تاريخ الزيارة مطلوب.';
+    return errors;
+  };
+
+  const handleEditRecord = async (values: typeof initialEditValues) => {
     try {
+      const vital_signs = {
+        blood_pressure: values.blood_pressure || null,
+        temperature: values.temperature || null,
+        heart_rate: values.heart_rate || null,
+        weight: values.weight || null,
+      };
+
       const { error } = await supabase
         .from('medical_records')
         .update({
-          chief_complaint: formData.chief_complaint,
-          diagnosis: formData.diagnosis,
-          treatment_plan: formData.treatment_plan,
-          prescribed_medications: formData.prescribed_medications,
-          follow_up_instructions: formData.follow_up_instructions,
-          vital_signs: formData.vital_signs,
+          chief_complaint: values.chief_complaint || null,
+          diagnosis: values.diagnosis || null,
+          treatment_plan: values.treatment_plan || null,
+          prescribed_medications: values.prescribed_medications || null,
+          follow_up_instructions: values.follow_up_instructions || null,
+          vital_signs,
         })
-        .eq('id', selectedRecord.id);
+        .eq('id', values.id);
 
       if (error) throw error;
 
-      toast({
-        title: "تم التعديل",
-        description: "تم تعديل السجل الطبي بنجاح",
-      });
-
+      toast({ title: "تم التحديث", description: "تم تحديث السجل الطبي بنجاح" });
       setIsEditDialogOpen(false);
       setSelectedRecord(null);
-      resetForm();
-      fetchRecords();
     } catch (error: any) {
-      toast({
-        title: "خطأ",
-        description: error.message || "فشل في تعديل السجل الطبي",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث السجل الطبي", variant: "destructive" });
     }
   };
 
+  const editForm = useForm({
+    initialValues: initialEditValues,
+    onSubmit: handleEditRecord,
+    validate: validateEdit,
+  });
+
+  useEffect(() => {
+    if (selectedRecord) {
+      editForm.setValues(initialEditValues);
+    }
+  }, [selectedRecord]);
+
+  // --- Delete Record ---
   const handleDeleteRecord = async () => {
     if (!selectedRecord) return;
-
-    setIsSubmitting(true);
 
     try {
       const { error } = await supabase
@@ -251,85 +295,70 @@ const MedicalRecords = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "تم الحذف",
-        description: "تم حذف السجل الطبي بنجاح",
-      });
-
+      toast({ title: "تم الحذف", description: "تم حذف السجل الطبي بنجاح" });
       setIsDeleteDialogOpen(false);
       setSelectedRecord(null);
-      fetchRecords();
     } catch (error: any) {
-      toast({
-        title: "خطأ",
-        description: error.message || "فشل في حذف السجل الطبي",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      toast({ title: "خطأ", description: error.message || "فشل في حذف السجل الطبي", variant: "destructive" });
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      patient_id: '',
-      doctor_id: '',
-      appointment_id: '',
-      visit_date: new Date().toISOString().split('T')[0],
-      chief_complaint: '',
-      diagnosis: '',
-      treatment_plan: '',
-      prescribed_medications: '',
-      follow_up_instructions: '',
-      vital_signs: {
-        blood_pressure: '',
-        temperature: '',
-        heart_rate: '',
-        weight: '',
-      }
-    });
-  };
-
-  const openEditDialog = (record: MedicalRecord) => {
-    setSelectedRecord(record);
-    setFormData({
-      patient_id: '',
-      doctor_id: '',
-      appointment_id: '',
-      visit_date: record.visit_date,
-      chief_complaint: record.chief_complaint || '',
-      diagnosis: record.diagnosis || '',
-      treatment_plan: record.treatment_plan || '',
-      prescribed_medications: record.prescribed_medications || '',
-      follow_up_instructions: record.follow_up_instructions || '',
-      vital_signs: record.vital_signs || {
-        blood_pressure: '',
-        temperature: '',
-        heart_rate: '',
-        weight: '',
-      }
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const filteredRecords = records.filter(record => {
-    const search = searchTerm.toLowerCase();
-    return (
-      record.patients.full_name.toLowerCase().includes(search) ||
-      record.patients.phone.includes(search) ||
-      record.diagnosis?.toLowerCase().includes(search) ||
-      record.chief_complaint?.toLowerCase().includes(search) ||
-      record.treatment_plan?.toLowerCase().includes(search) ||
-      record.prescribed_medications?.toLowerCase().includes(search) ||
-      record.doctors.profiles.full_name.toLowerCase().includes(search) ||
-      new Date(record.visit_date).toLocaleDateString('ar-SA').includes(search)
-    );
+  // --- Search and Filter ---
+  const { searchTerm, setSearchTerm, filteredData: searchedRecords } = useSearch(records, {
+    fields: ['patients.full_name', 'patients.phone', 'doctors.profiles.full_name', 'diagnosis'],
+    minChars: 0,
   });
+
+  // --- DataTable Columns ---
+  const columns: Column<MedicalRecord>[] = [
+    {
+      key: 'patients.full_name',
+      label: 'المريض',
+      width: '25%',
+      render: (_, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+              {record.patients.full_name.split(' ')[0][0]}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h4 className="font-semibold text-foreground">{record.patients.full_name}</h4>
+            <p className="text-sm text-muted-foreground">{record.patients.phone}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'visit_date',
+      label: 'تاريخ الزيارة',
+      width: '15%',
+      render: (date) => new Date(date).toLocaleDateString('ar-SA'),
+    },
+    {
+      key: 'diagnosis',
+      label: 'التشخيص',
+      width: '20%',
+      render: (diagnosis) => <span className="line-clamp-2">{diagnosis || '-'}</span>,
+    },
+    {
+      key: 'doctors.profiles.full_name',
+      label: 'الطبيب',
+      width: '20%',
+      render: (_, record) => <span>د. {record.doctors.profiles.full_name}</span>,
+    },
+    {
+      key: 'chief_complaint',
+      label: 'الشكوى الرئيسية',
+      width: '20%',
+      render: (complaint) => <span className="line-clamp-2">{complaint || '-'}</span>,
+    },
+  ];
 
   if (loading) {
     return (
       <Layout>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="h-64 bg-gray-200 rounded"></div>
@@ -341,124 +370,145 @@ const MedicalRecords = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6">
-        {/* Stats Bar */}
-        <StatsBar
-          stats={[
-            { label: 'إجمالي السجلات', value: records.length, icon: FileText, color: 'primary' },
-            { label: 'سجلات هذا الشهر', value: records.filter(r => {
-              const date = new Date(r.visit_date);
-              const now = new Date();
-              return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-            }).length, icon: TrendingUp, color: 'success' },
-            { label: 'سجلات اليوم', value: records.filter(r => r.visit_date === new Date().toISOString().split('T')[0]).length, icon: Activity, color: 'info' },
-          ]}
-        />
-
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">السجلات الطبية</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">السجلات الطبية</h1>
             <p className="text-muted-foreground mt-1">
-              إدارة وعرض السجلات الطبية للمرضى
+              إدارة السجلات الطبية للمرضى ({records.length})
             </p>
           </div>
           {permissions.canCreateMedicalRecords && (
-            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-              setIsAddDialogOpen(open);
-              if (!open) resetForm();
-            }}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="medical">
+                <Button variant="medical" className="w-full md:w-auto">
                   <Plus className="w-4 h-4 ml-2" />
-                  سجل طبي جديد
+                  سجل جديد
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>إضافة سجل طبي جديد</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleAddRecord} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>المريض *</Label>
-                      <select
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        value={formData.patient_id}
-                        onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                        required
-                      >
-                        <option value="">اختر المريض</option>
-                        {patients.map(p => (
-                          <option key={p.id} value={p.id}>{p.full_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label>الطبيب *</Label>
-                      <select
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        value={formData.doctor_id}
-                        onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
-                        required
-                      >
-                        <option value="">اختر الطبيب</option>
-                        {doctors.map(d => (
-                          <option key={d.id} value={d.id}>{d.profiles?.full_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label>تاريخ الزيارة *</Label>
-                    <Input
-                      type="date"
-                      value={formData.visit_date}
-                      onChange={(e) => setFormData({ ...formData, visit_date: e.target.value })}
+                <form onSubmit={addForm.handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SelectField
+                      label="المريض"
                       required
+                      value={addForm.values.patient_id}
+                      onValueChange={(value) => addForm.setFieldValue('patient_id', value)}
+                      options={patients.map(p => ({ value: p.id, label: p.full_name }))}
+                      error={addForm.errors.patient_id}
+                      placeholder="اختر مريضًا"
+                    />
+                    <SelectField
+                      label="الطبيب"
+                      required
+                      value={addForm.values.doctor_id}
+                      onValueChange={(value) => addForm.setFieldValue('doctor_id', value)}
+                      options={doctors.map(d => ({ value: d.id, label: `د. ${d.profiles.full_name}` }))}
+                      error={addForm.errors.doctor_id}
+                      placeholder="اختر طبيبًا"
                     />
                   </div>
 
-                  <div>
-                    <Label>الشكوى الرئيسية</Label>
-                    <Textarea
-                      value={formData.chief_complaint}
-                      onChange={(e) => setFormData({ ...formData, chief_complaint: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
+                  <TextInput
+                    label="تاريخ الزيارة"
+                    required
+                    type="date"
+                    name="visit_date"
+                    value={addForm.values.visit_date}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    error={addForm.errors.visit_date}
+                  />
 
-                  <div>
-                    <Label>التشخيص</Label>
-                    <Textarea
-                      value={formData.diagnosis}
-                      onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
+                  <TextAreaField
+                    label="الشكوى الرئيسية"
+                    name="chief_complaint"
+                    value={addForm.values.chief_complaint}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    placeholder="وصف شكوى المريض الرئيسية..."
+                  />
 
-                  <div>
-                    <Label>خطة العلاج</Label>
-                    <Textarea
-                      value={formData.treatment_plan}
-                      onChange={(e) => setFormData({ ...formData, treatment_plan: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
+                  <TextAreaField
+                    label="التشخيص"
+                    name="diagnosis"
+                    value={addForm.values.diagnosis}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    placeholder="التشخيص الطبي..."
+                  />
 
-                  <div>
-                    <Label>الأدوية الموصوفة</Label>
-                    <Textarea
-                      value={formData.prescribed_medications}
-                      onChange={(e) => setFormData({ ...formData, prescribed_medications: e.target.value })}
-                      rows={2}
-                    />
+                  <TextAreaField
+                    label="خطة العلاج"
+                    name="treatment_plan"
+                    value={addForm.values.treatment_plan}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    placeholder="خطة العلاج والإجراءات..."
+                  />
+
+                  <TextAreaField
+                    label="الأدوية الموصوفة"
+                    name="prescribed_medications"
+                    value={addForm.values.prescribed_medications}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    placeholder="الأدوية والجرعات..."
+                  />
+
+                  <TextAreaField
+                    label="تعليمات المتابعة"
+                    name="follow_up_instructions"
+                    value={addForm.values.follow_up_instructions}
+                    onChange={addForm.handleChange}
+                    onBlur={addForm.handleBlur}
+                    placeholder="تعليمات المتابعة والنصائح..."
+                  />
+
+                  {/* Vital Signs */}
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold text-foreground mb-4">العلامات الحيوية</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <TextInput
+                        label="ضغط الدم"
+                        name="blood_pressure"
+                        value={addForm.values.blood_pressure}
+                        onChange={addForm.handleChange}
+                        placeholder="مثال: 120/80"
+                      />
+                      <TextInput
+                        label="درجة الحرارة (°م)"
+                        name="temperature"
+                        type="number"
+                        step="0.1"
+                        value={addForm.values.temperature}
+                        onChange={addForm.handleChange}
+                      />
+                      <TextInput
+                        label="نبضات القلب (نبضة/دقيقة)"
+                        name="heart_rate"
+                        type="number"
+                        value={addForm.values.heart_rate}
+                        onChange={addForm.handleChange}
+                      />
+                      <TextInput
+                        label="الوزن (كغ)"
+                        name="weight"
+                        type="number"
+                        step="0.1"
+                        value={addForm.values.weight}
+                        onChange={addForm.handleChange}
+                      />
+                    </div>
                   </div>
 
                   <DialogFooter>
-                    <Button type="submit" disabled={isSubmitting} variant="medical">
-                      {isSubmitting ? 'جاري الإضافة...' : 'إضافة السجل'}
+                    <Button type="submit" variant="medical" disabled={addForm.isSubmitting}>
+                      {addForm.isSubmitting ? "جاري الإضافة..." : "إضافة السجل"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -468,189 +518,293 @@ const MedicalRecords = () => {
         </div>
 
         {/* Search */}
-        <Card className="card-gradient border-0 medical-shadow">
-          <CardContent className="p-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="البحث السريع والتفاعلي بالمريض، الطبيب، التشخيص، العلاج، الأدوية، التاريخ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="البحث بالمريض، الطبيب، أو التشخيص..."
+        />
 
-        {/* Records List */}
-        <Card className="card-gradient border-0 medical-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              السجلات الطبية ({filteredRecords.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {filteredRecords.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">لا توجد سجلات طبية</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {filteredRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="p-4 rounded-lg bg-accent/30 hover:bg-accent/50 transition-smooth"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-primary/20 text-primary">
-                              {record.patients.full_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h4 className="font-semibold text-foreground">{record.patients.full_name}</h4>
-                            <p className="text-sm text-muted-foreground">{record.patients.phone}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm mt-3">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-primary" />
-                            <span>{new Date(record.visit_date).toLocaleDateString('ar-SA')}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Stethoscope className="w-4 h-4 text-primary" />
-                            <span>{record.doctors.profiles.full_name}</span>
-                          </div>
-                        </div>
-
-                        {record.diagnosis && (
-                          <div className="mt-2">
-                            <Badge variant="outline" className="bg-primary/10">
-                              {record.diagnosis}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedRecord(record);
-                            setIsViewDialogOpen(true);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {permissions.canEditMedicalRecords && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openEditDialog(record)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        )}
-                        {permissions.canDeleteMedicalRecords && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => {
-                              setSelectedRecord(record);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Delete Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-              <AlertDialogDescription>
-                هل أنت متأكد من حذف هذا السجل الطبي؟ لا يمكن التراجع عن هذا الإجراء.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>إلغاء</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteRecord}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={isSubmitting}
+        {/* Medical Records Table */}
+        <DataTable
+          title="السجلات الطبية"
+          columns={columns}
+          data={searchedRecords}
+          loading={loading}
+          emptyMessage="لا توجد سجلات طبية تطابق معايير البحث"
+          className="medical-shadow"
+          actions={(record) => (
+            <div className="flex gap-2 justify-center">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSelectedRecord(record);
+                  setIsViewDialogOpen(true);
+                }}
               >
-                {isSubmitting ? 'جاري الحذف...' : 'حذف'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Eye className="w-4 h-4" />
+              </Button>
+              {permissions.canEditMedicalRecords && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedRecord(record);
+                    setIsEditDialogOpen(true);
+                  }}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              )}
+              {permissions.canDeleteMedicalRecords && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    setSelectedRecord(record);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        />
 
         {/* View Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>تفاصيل السجل الطبي</DialogTitle>
+              <DialogTitle>عرض السجل الطبي</DialogTitle>
             </DialogHeader>
             {selectedRecord && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>المريض</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.patients.full_name}</p>
-                  </div>
-                  <div>
-                    <Label>الطبيب</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.doctors.profiles.full_name}</p>
-                  </div>
+              <div className="space-y-6">
+                {/* Patient & Doctor Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">بيانات المريض</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">الاسم</p>
+                        <p className="font-semibold">{selectedRecord.patients.full_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">الهاتف</p>
+                        <p className="font-semibold">{selectedRecord.patients.phone}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">بيانات الطبيب</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">الاسم</p>
+                        <p className="font-semibold">د. {selectedRecord.doctors.profiles.full_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">تاريخ الزيارة</p>
+                        <p className="font-semibold">{new Date(selectedRecord.visit_date).toLocaleDateString('ar-SA')}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div>
-                  <Label>تاريخ الزيارة</Label>
-                  <p className="text-foreground mt-1">{new Date(selectedRecord.visit_date).toLocaleDateString('ar-SA')}</p>
-                </div>
+
+                {/* Medical Information */}
                 {selectedRecord.chief_complaint && (
-                  <div>
-                    <Label>الشكوى الرئيسية</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.chief_complaint}</p>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">الشكوى الرئيسية</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{selectedRecord.chief_complaint}</p>
+                    </CardContent>
+                  </Card>
                 )}
+
                 {selectedRecord.diagnosis && (
-                  <div>
-                    <Label>التشخيص</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.diagnosis}</p>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">التشخيص</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{selectedRecord.diagnosis}</p>
+                    </CardContent>
+                  </Card>
                 )}
+
                 {selectedRecord.treatment_plan && (
-                  <div>
-                    <Label>خطة العلاج</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.treatment_plan}</p>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">خطة العلاج</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{selectedRecord.treatment_plan}</p>
+                    </CardContent>
+                  </Card>
                 )}
+
                 {selectedRecord.prescribed_medications && (
-                  <div>
-                    <Label>الأدوية الموصوفة</Label>
-                    <p className="text-foreground mt-1">{selectedRecord.prescribed_medications}</p>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">الأدوية الموصوفة</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{selectedRecord.prescribed_medications}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Vital Signs */}
+                {selectedRecord.vital_signs && Object.values(selectedRecord.vital_signs).some(v => v) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">العلامات الحيوية</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedRecord.vital_signs.blood_pressure && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">ضغط الدم</p>
+                            <p className="font-semibold">{selectedRecord.vital_signs.blood_pressure}</p>
+                          </div>
+                        )}
+                        {selectedRecord.vital_signs.temperature && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">درجة الحرارة</p>
+                            <p className="font-semibold">{selectedRecord.vital_signs.temperature}°م</p>
+                          </div>
+                        )}
+                        {selectedRecord.vital_signs.heart_rate && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">نبضات القلب</p>
+                            <p className="font-semibold">{selectedRecord.vital_signs.heart_rate} نبضة/دقيقة</p>
+                          </div>
+                        )}
+                        {selectedRecord.vital_signs.weight && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">الوزن</p>
+                            <p className="font-semibold">{selectedRecord.vital_signs.weight} كغ</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>تعديل السجل الطبي</DialogTitle>
+            </DialogHeader>
+            {selectedRecord && (
+              <form onSubmit={editForm.handleSubmit} className="space-y-4">
+                <TextAreaField
+                  label="الشكوى الرئيسية"
+                  name="chief_complaint"
+                  value={editForm.values.chief_complaint}
+                  onChange={editForm.handleChange}
+                  onBlur={editForm.handleBlur}
+                />
+
+                <TextAreaField
+                  label="التشخيص"
+                  name="diagnosis"
+                  value={editForm.values.diagnosis}
+                  onChange={editForm.handleChange}
+                  onBlur={editForm.handleBlur}
+                />
+
+                <TextAreaField
+                  label="خطة العلاج"
+                  name="treatment_plan"
+                  value={editForm.values.treatment_plan}
+                  onChange={editForm.handleChange}
+                  onBlur={editForm.handleBlur}
+                />
+
+                <TextAreaField
+                  label="الأدوية الموصوفة"
+                  name="prescribed_medications"
+                  value={editForm.values.prescribed_medications}
+                  onChange={editForm.handleChange}
+                  onBlur={editForm.handleBlur}
+                />
+
+                <TextAreaField
+                  label="تعليمات المتابعة"
+                  name="follow_up_instructions"
+                  value={editForm.values.follow_up_instructions}
+                  onChange={editForm.handleChange}
+                  onBlur={editForm.handleBlur}
+                />
+
+                {/* Vital Signs */}
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold text-foreground mb-4">العلامات الحيوية</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <TextInput
+                      label="ضغط الدم"
+                      name="blood_pressure"
+                      value={editForm.values.blood_pressure}
+                      onChange={editForm.handleChange}
+                    />
+                    <TextInput
+                      label="درجة الحرارة (°م)"
+                      name="temperature"
+                      type="number"
+                      step="0.1"
+                      value={editForm.values.temperature}
+                      onChange={editForm.handleChange}
+                    />
+                    <TextInput
+                      label="نبضات القلب (نبضة/دقيقة)"
+                      name="heart_rate"
+                      type="number"
+                      value={editForm.values.heart_rate}
+                      onChange={editForm.handleChange}
+                    />
+                    <TextInput
+                      label="الوزن (كغ)"
+                      name="weight"
+                      type="number"
+                      step="0.1"
+                      value={editForm.values.weight}
+                      onChange={editForm.handleChange}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button type="submit" variant="medical" disabled={editForm.isSubmitting}>
+                    {editForm.isSubmitting ? "جاري التحديث..." : "تحديث السجل"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          title="حذف السجل الطبي"
+          description={`هل أنت متأكد من حذف السجل الطبي للمريض: ${selectedRecord?.patients.full_name}؟ سيتم حذف جميع البيانات ولن تتمكن من التراجع عن هذا الإجراء.`}
+          onConfirm={handleDeleteRecord}
+          confirmText="حذف نهائي"
+          isDangerous
+          isLoading={editForm.isSubmitting}
+        />
       </div>
     </Layout>
   );
