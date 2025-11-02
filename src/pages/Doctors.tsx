@@ -251,7 +251,7 @@ const Doctors = () => {
       // 2. Update the profile role back (optional, depending on system logic)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ role: 'user' }) // Assuming 'user' is the default role
+        .update({ role: 'patient' }) // Default role
         .eq('user_id', selectedDoctor.user_id);
 
       if (profileError) console.error('Error updating profile role:', profileError);
@@ -303,7 +303,7 @@ const Doctors = () => {
   // --- DataTable Columns ---
   const columns: Column<Doctor>[] = [
     {
-      key: 'profiles.full_name',
+      key: 'id', // Use valid key
       label: 'الطبيب',
       width: '25%',
       render: (_, doctor) => (

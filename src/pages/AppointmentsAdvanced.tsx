@@ -26,7 +26,7 @@ interface Appointment {
   doctor_id: string;
   appointment_date: string;
   appointment_time: string;
-  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'return';
+  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'return' | 'waiting';
   notes?: string;
   cost?: number;
   patients: {

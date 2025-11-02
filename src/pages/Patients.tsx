@@ -609,9 +609,10 @@ const Patients = () => {
       {/* Medical Record Dialog */}
       {selectedPatientForRecord && (
         <MedicalRecordDialog
-          patient={selectedPatientForRecord}
+          patientId={selectedPatientForRecord.id}
+          patientName={selectedPatientForRecord.full_name}
           isOpen={isMedicalRecordOpen}
-          onOpenChange={setIsMedicalRecordOpen}
+          onClose={() => setIsMedicalRecordOpen(false)}
         />
       )}
     </Layout>

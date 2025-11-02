@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-interface FormErrors {
+export interface FormErrors {
   [key: string]: string;
 }
 

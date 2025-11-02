@@ -29,12 +29,7 @@ interface MedicalRecord {
   treatment_plan?: string;
   prescribed_medications?: string;
   follow_up_instructions?: string;
-  vital_signs?: {
-    blood_pressure?: string;
-    temperature?: string;
-    heart_rate?: string;
-    weight?: string;
-  };
+  vital_signs?: any; // Using any for JSON compatibility
   patients: {
     id: string;
     full_name: string;
@@ -312,7 +307,7 @@ const MedicalRecords = () => {
   // --- DataTable Columns ---
   const columns: Column<MedicalRecord>[] = [
     {
-      key: 'patients.full_name',
+      key: 'id', // Using valid key
       label: 'المريض',
       width: '25%',
       render: (_, record) => (
@@ -342,7 +337,7 @@ const MedicalRecords = () => {
       render: (diagnosis) => <span className="line-clamp-2">{diagnosis || '-'}</span>,
     },
     {
-      key: 'doctors.profiles.full_name',
+      key: 'doctor_id', // Using valid key
       label: 'الطبيب',
       width: '20%',
       render: (_, record) => <span>د. {record.doctors.profiles.full_name}</span>,

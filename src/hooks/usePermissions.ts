@@ -52,6 +52,11 @@ export const usePermissions = () => {
 
     // Waiting List
     canManageWaitingList: isAdmin || isReceptionist,
+
+    // Additional permissions
+    canUpdatePatients: isAdmin || isReceptionist,
+    canAddRecords: isAdmin || isDoctor,
+    canEditRecords: isAdmin || isDoctor,
   };
 
   return permissions;
