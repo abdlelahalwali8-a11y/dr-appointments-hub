@@ -18,6 +18,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Permissions from "./pages/Permissions";
 import QuickBooking from "./pages/QuickBooking";
+import SystemManagement from "./pages/SystemManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -97,6 +98,11 @@ const App = () => {
               <Route path="/quick-booking" element={
                 <ProtectedRoute allowedRoles={['admin', 'receptionist']}>
                   <QuickBooking />
+                </ProtectedRoute>
+              } />
+              <Route path="/system-management" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <SystemManagement />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

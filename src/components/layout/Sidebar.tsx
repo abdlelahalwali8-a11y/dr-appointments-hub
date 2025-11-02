@@ -17,7 +17,8 @@ import {
   LogOut,
   Plus,
   ChevronLeft,
-  Menu
+  Menu,
+  Database
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -117,6 +118,12 @@ const Sidebar = () => {
       title: 'الإعدادات',
       icon: Settings,
       path: '/settings',
+      roles: ['admin']
+    },
+    {
+      title: 'إدارة النظام',
+      icon: Database,
+      path: '/system-management',
       roles: ['admin']
     }
   ];

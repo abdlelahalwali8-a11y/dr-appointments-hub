@@ -147,10 +147,12 @@ const WaitingList = () => {
               <Clock className="w-4 h-4 ml-2" />
               {waitingAppointments.length} في الانتظار
             </Badge>
-            <Button variant="medical">
-              <Plus className="w-4 h-4 ml-2" />
-              حجز سريع
-            </Button>
+            {permissions.canCreateAppointments && (
+              <Button variant="medical" onClick={() => window.location.href = '/quick-booking'}>
+                <Plus className="w-4 h-4 ml-2" />
+                حجز سريع
+              </Button>
+            )}
           </div>
         </div>
 
@@ -184,26 +186,28 @@ const WaitingList = () => {
                       <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">
                         {index + 1}
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => moveAppointment(appointment.id, 'up')}
-                          disabled={index === 0}
-                          className="w-6 h-6 p-0"
-                        >
-                          <ArrowUp className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => moveAppointment(appointment.id, 'down')}
-                          disabled={index === waitingAppointments.length - 1}
-                          className="w-6 h-6 p-0"
-                        >
-                          <ArrowDown className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      {permissions.canManageWaitingList && (
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveAppointment(appointment.id, 'up')}
+                            disabled={index === 0}
+                            className="w-6 h-6 p-0"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveAppointment(appointment.id, 'down')}
+                            disabled={index === waitingAppointments.length - 1}
+                            className="w-6 h-6 p-0"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     
                     <Avatar className="h-12 w-12">
@@ -243,15 +247,17 @@ const WaitingList = () => {
                     <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                       في الانتظار
                     </Badge>
-                    <Button
-                      size="sm"
-                      variant="medical"
-                      onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
-                      className="flex items-center gap-2"
-                    >
-                      <Play className="w-3 h-3" />
-                      ابدأ الكشف
-                    </Button>
+                    {permissions.canEditAppointments && (
+                      <Button
+                        size="sm"
+                        variant="medical"
+                        onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
+                        className="flex items-center gap-2"
+                      >
+                        <Play className="w-3 h-3" />
+                        ابدأ الكشف
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
