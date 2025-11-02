@@ -34,14 +34,17 @@ const Sidebar = () => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
+      if (mobile && !isCollapsed) {
         setIsCollapsed(true);
       }
     };
 
+    // Initial check
+    handleResize();
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [isCollapsed]);
 
   const menuItems = [
     {
@@ -147,7 +150,7 @@ const Sidebar = () => {
       <div
         className={`bg-card border-l border-border h-screen flex flex-col medical-shadow transition-all duration-300 ${
           isCollapsed ? 'w-20' : 'w-64'
-        } ${isMobile && isCollapsed ? 'fixed right-0 top-0 z-40 overflow-hidden' : ''}`}
+        } ${isMobile && !isCollapsed ? 'fixed right-0 top-0 z-40' : ''}`}
       >
         {/* Header */}
         <div className="p-6 border-b border-border flex items-center justify-between">
@@ -236,7 +239,7 @@ const Sidebar = () => {
       </div>
 
       {/* Mobile Overlay */}
-      {isMobile && isCollapsed && (
+      {isMobile && !isCollapsed && (
         <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
           onClick={() => setIsCollapsed(true)}

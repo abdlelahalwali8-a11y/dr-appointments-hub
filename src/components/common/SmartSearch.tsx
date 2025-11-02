@@ -3,8 +3,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Calendar, Phone, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { Search, Plus, Calendar, Phone, Mail, ArrowRight, AlertCircle, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { TextInput, TextAreaField } from '@/components/common/FormField';
@@ -26,8 +29,24 @@ const SmartSearch = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isViewRecordOpen, setIsViewRecordOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch doctors on mount
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    const { data } = await supabase
+      .from('doctors')
+      .select('*, profiles(full_name)')
+      .eq('is_available', true);
+    setDoctors(data || []);
+  };
 
   const performSearch = async (query: string) => {
     if (query.length < 2) {
@@ -86,14 +105,34 @@ const SmartSearch = () => {
     performSearch(value);
   };
 
-  const handleSelectPatient = (patient: any) => {
+  const handleSelectPatient = async (patient: any, action: 'book' | 'view') => {
     setSelectedPatient(patient);
     setIsOpen(false);
-    setIsBookingOpen(true);
+    
+    if (action === 'book') {
+      setIsBookingOpen(true);
+    } else {
+      // Fetch medical records
+      const { data } = await supabase
+        .from('medical_records')
+        .select(`
+          *,
+          doctors(*, profiles(full_name))
+        `)
+        .eq('patient_id', patient.id)
+        .order('visit_date', { ascending: false });
+      
+      setMedicalRecords(data || []);
+      setIsViewRecordOpen(true);
+    }
   };
 
   const handleAddNewPatient = () => {
     setIsOpen(false);
+    // Pre-fill name if search term exists
+    if (searchTerm) {
+      addPatientForm.setFieldValue('full_name', searchTerm);
+    }
     setIsAddPatientOpen(true);
   };
 
@@ -238,23 +277,37 @@ const SmartSearch = () => {
                     key={`${result.type}-${result.id}`}
                     className="p-3 hover:bg-accent/50 cursor-pointer transition"
                   >
-                    {result.type === 'patient' && (
-                      <div
-                        onClick={() => handleSelectPatient(result.data)}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
+                  {result.type === 'patient' && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Avatar className="h-10 w-10 flex-shrink-0">
                             <AvatarFallback className="bg-primary/20 text-primary">
                               {result.name.split(' ')[0][0]}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-semibold text-foreground">{result.name}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground truncate">{result.name}</p>
                             <p className="text-sm text-muted-foreground">{result.phone}</p>
                           </div>
                         </div>
-                        <Badge variant="secondary">مريض</Badge>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSelectPatient(result.data, 'view')}
+                          >
+                            <FileText className="w-4 h-4 ml-1" />
+                            السجل
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleSelectPatient(result.data, 'book')}
+                          >
+                            <Calendar className="w-4 h-4 ml-1" />
+                            حجز
+                          </Button>
+                        </div>
                       </div>
                     )}
 
@@ -337,6 +390,69 @@ const SmartSearch = () => {
         </DialogContent>
       </Dialog>
 
+      {/* View Medical Record Dialog */}
+      <Dialog open={isViewRecordOpen} onOpenChange={setIsViewRecordOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              السجل الطبي - {selectedPatient?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {medicalRecords.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>لا توجد سجلات طبية حتى الآن</p>
+              </div>
+            ) : (
+              medicalRecords.map((record) => (
+                <Card key={record.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">د. {record.doctors?.profiles?.full_name}</p>
+                        <p className="text-sm text-muted-foreground">{record.doctors?.specialization}</p>
+                      </div>
+                      <Badge>{new Date(record.visit_date).toLocaleDateString('ar-SA')}</Badge>
+                    </div>
+                    {record.diagnosis && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">التشخيص:</p>
+                        <p className="text-sm">{record.diagnosis}</p>
+                      </div>
+                    )}
+                    {record.treatment_plan && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">خطة العلاج:</p>
+                        <p className="text-sm">{record.treatment_plan}</p>
+                      </div>
+                    )}
+                    {record.prescribed_medications && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">الأدوية:</p>
+                        <p className="text-sm">{record.prescribed_medications}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+            <DialogFooter>
+              <Button
+                variant="default"
+                onClick={() => {
+                  setIsViewRecordOpen(false);
+                  setIsBookingOpen(true);
+                }}
+              >
+                <Calendar className="w-4 h-4 ml-2" />
+                حجز موعد جديد
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Book Appointment Dialog */}
       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
         <DialogContent className="max-w-md">
@@ -346,6 +462,28 @@ const SmartSearch = () => {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={bookingForm.handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="doctor_id">اختر الطبيب *</Label>
+              <Select
+                value={bookingForm.values.doctor_id}
+                onValueChange={(value) => bookingForm.setFieldValue('doctor_id', value)}
+              >
+                <SelectTrigger className={bookingForm.errors.doctor_id ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="اختر طبيب..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor.id} value={doctor.id}>
+                      د. {doctor.profiles?.full_name} - {doctor.specialization}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {bookingForm.errors.doctor_id && (
+                <p className="text-sm text-destructive">{bookingForm.errors.doctor_id}</p>
+              )}
+            </div>
+            
             <TextInput
               label="تاريخ الموعد"
               type="date"
@@ -373,7 +511,7 @@ const SmartSearch = () => {
               onBlur={bookingForm.handleBlur}
             />
             <DialogFooter>
-              <Button type="submit" variant="medical" disabled={bookingForm.isSubmitting}>
+              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={bookingForm.isSubmitting}>
                 {bookingForm.isSubmitting ? "جاري الحجز..." : "حجز الموعد"}
               </Button>
             </DialogFooter>
