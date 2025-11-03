@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { showToastNotification } from '@/utils/notifications';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -35,6 +36,26 @@ export const useRealtimeSubscription = ({
         },
         (payload) => {
           console.log(`Realtime ${payload.eventType} on ${table}:`, payload);
+
+          if (table === 'appointments' && payload.eventType === 'INSERT') {
+            const newAppointment = payload.new;
+            showToastNotification({
+              type: 'appointment_status_change',
+              title: 'موعد جديد!',
+              message: `تم حجز موعد جديد بتاريخ ${newAppointment.appointment_date} في ${newAppointment.appointment_time}.`,
+              status: newAppointment.status,
+              link: '/appointments',
+            });
+          } else if (table === 'appointments' && payload.eventType === 'UPDATE') {
+            const updatedAppointment = payload.new;
+            showToastNotification({
+              type: 'appointment_status_change',
+              title: 'تحديث موعد!',
+              message: `تم تحديث حالة موعد إلى: ${updatedAppointment.status}.`,
+              status: updatedAppointment.status,
+              link: '/appointments',
+            });
+          }
           
           switch (payload.eventType) {
             case 'INSERT':

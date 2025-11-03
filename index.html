@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>مركز د أحمد قايد سالم الطبي - نظام إدارة المواعيد</title>
+    <link rel="manifest" href="/manifest.json" />
+    <title>Dr. Appointments Hub</title>
     <meta name="description" content="نظام إدارة مواعيد طبية متقدم لمركز د أحمد قايد سالم الطبي" />
     <meta name="author" content="Medical Center Management System" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,5 +24,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

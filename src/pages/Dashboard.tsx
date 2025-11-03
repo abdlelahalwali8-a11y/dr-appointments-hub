@@ -51,6 +51,59 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
 
+  // Helper function to fetch revenue by day
+  const fetchRevenueByDay = async (days: number) => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('appointment_date, doctors (consultation_fee)')
+      .eq('status', 'completed')
+      .gte('appointment_date', startDate.toISOString().split('T')[0]);
+
+    if (error) {
+      console.error('Error fetching revenue by day:', error);
+      return [];
+    }
+
+    const dailyRevenue = data.reduce((acc: any, apt: any) => {
+      const date = apt.appointment_date;
+      const fee = apt.doctors?.consultation_fee || 0;
+      acc[date] = (acc[date] || 0) + fee;
+      return acc;
+    }, {});
+
+    return Object.keys(dailyRevenue).map(date => ({
+      date: new Date(date).toLocaleDateString('ar-SA', { weekday: 'short' }),
+      revenue: dailyRevenue[date],
+    }));
+  };
+
+  // Helper function to fetch appointments by doctor
+  const fetchAppointmentsByDoctor = async () => {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('doctors (profiles (full_name))');
+
+    if (error) {
+      console.error('Error fetching appointments by doctor:', error);
+      return [];
+    }
+
+    const doctorCounts = data.reduce((acc: any, apt: any) => {
+      const doctorName = apt.doctors?.profiles?.full_name || 'غير معروف';
+      acc[doctorName] = (acc[doctorName] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.keys(doctorCounts).map(doctor => ({
+      doctor,
+      count: doctorCounts[doctor],
+    }));
+  };
+
   const fetchDashboardStats = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -74,35 +127,14 @@ const Dashboard = () => {
 
       if (todayError) throw todayError;
 
-      // Fetch appointments by status
-      const { data: statusData } = await supabase
-        .from('appointments')
-        .select('status');
-
-      const statusCounts = statusData?.reduce((acc: any, apt: any) => {
-        const existing = acc.find((s: any) => s.status === apt.status);
-        if (existing) {
-          existing.count++;
-        } else {
-          acc.push({ status: apt.status, count: 1 });
-        }
-        return acc;
-      }, []) || [];
-
-      // Fetch upcoming appointments
-      const { data: upcomingAppts } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          patients (full_name, phone),
-          doctors (profiles (full_name))
+     name))
         `)
         .gte('appointment_date', today)
         .order('appointment_date')
         .limit(5);
 
       // Calculate revenue
-      const { data: completedAppts } = await supabase
+      const { data: completedAppts, error: completedError } = await supabase
         .from('appointments')
         .select(`
           *,
@@ -111,9 +143,15 @@ const Dashboard = () => {
         .eq('status', 'completed')
         .gte('appointment_date', today);
 
+      if (completedError) throw completedError;
+
       const todayRevenue = completedAppts?.reduce((sum, apt) => sum + (apt.doctors?.consultation_fee || 0), 0) || 0;
 
-      setStats({
+      // Fetch revenue by day (for the last 7 days)
+      const revenueByDayData = await fetchRevenueByDay(7);
+
+      // Fetch appointments by doctor
+      const appointmentsByDoctorData = await fetchAppointm// Calculate revenue is already done in the previous block, removing redundant code.   setStats({
         totalPatients: patientCount || 0,
         totalDoctors: doctorCount || 0,
         todayAppointments: todayAppts?.length || 0,
@@ -123,8 +161,8 @@ const Dashboard = () => {
         cancelledAppointments: statusCounts.find((s: any) => s.status === 'cancelled')?.count || 0,
         activeUsers: 0, // This would require session tracking
         appointmentsByStatus: statusCounts,
-        revenueByDay: [], // Would need historical data
-        appointmentsByDoctor: [], // Would need aggregation
+        revenueByDay: revenueByDayData,
+        appointmentsByDoctor: appointmentsByDoctorData,
         upcomingAppointments: upcomingAppts || [],
         alerts: generateAlerts(todayAppts || [], upcomingAppts || []),
       });
@@ -328,15 +366,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={[
-                    { date: 'الأحد', revenue: 4000 },
-                    { date: 'الاثنين', revenue: 3000 },
-                    { date: 'الثلاثاء', revenue: 2000 },
-                    { date: 'الأربعاء', revenue: 2780 },
-                    { date: 'الخميس', revenue: 1890 },
-                    { date: 'الجمعة', revenue: 2390 },
-                    { date: 'السبت', revenue: 3490 },
-                  ]}>
+                  <AreaChart data={stats.revenueByDay}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -365,12 +395,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[
-                    { doctor: 'د. أحمد', count: 15 },
-                    { doctor: 'د. فاطمة', count: 12 },
-                    { doctor: 'د. محمد', count: 10 },
-                    { doctor: 'د. علي', count: 8 },
-                  ]}>
+                  <BarChart data={stats.appointmentsByDoctor}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="doctor" />
                     <YAxis />
