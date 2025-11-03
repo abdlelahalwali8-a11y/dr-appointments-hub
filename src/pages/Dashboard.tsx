@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface DashboardStats {
   totalPatients: number;
@@ -33,6 +34,7 @@ interface DashboardStats {
 }
 
 const Dashboard = () => {
+  const { formatCurrency } = useCurrency();
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     totalDoctors: 0,
@@ -253,7 +255,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stats.todayRevenue.toFixed(2)} ر.س</div>
+              <div className="text-2xl font-bold text-foreground">{formatCurrency(stats.todayRevenue)}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 <ArrowUpRight className="w-3 h-3 inline text-success" /> 8% من أمس
               </p>

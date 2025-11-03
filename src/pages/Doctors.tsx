@@ -17,6 +17,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useForm, FormErrors } from '@/hooks/useForm';
 import { TextInput, TextAreaField, SelectField } from '@/components/common/FormField';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Doctor {
   id: string;
@@ -46,6 +47,7 @@ interface Profile {
 
 const Doctors = () => {
   const permissions = usePermissions();
+  const { formatCurrency } = useCurrency();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,7 +332,7 @@ const Doctors = () => {
       key: 'consultation_fee',
       label: 'رسوم الكشف',
       width: '15%',
-      render: (fee) => <span className="font-medium text-primary">{fee} ر.س</span>,
+      render: (fee) => <span className="font-medium text-primary">{formatCurrency(fee)}</span>,
     },
     {
       key: 'is_available',
@@ -414,7 +416,7 @@ const Doctors = () => {
                       onBlur={addForm.handleBlur}
                     />
                     <TextInput
-                      label="رسوم الكشف (ر.س)"
+                      label="رسوم الكشف (ر.ي)"
                       type="number"
                       name="consultation_fee"
                       value={addForm.values.consultation_fee.toString()}
@@ -555,7 +557,7 @@ const Doctors = () => {
                     onBlur={editForm.handleBlur}
                   />
                   <TextInput
-                    label="رسوم الكشف (ر.س)"
+                    label="رسوم الكشف (ر.ي)"
                     type="number"
                     name="consultation_fee"
                     value={editForm.values.consultation_fee.toString()}
