@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Permissions from "./pages/Permissions";
 import QuickBooking from "./pages/QuickBooking";
 import SystemManagement from "./pages/SystemManagement";
+import PermissionsAdvanced from "./pages/PermissionsAdvanced";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({

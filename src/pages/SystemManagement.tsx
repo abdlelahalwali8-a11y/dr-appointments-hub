@@ -21,57 +21,97 @@ const SystemManagement = () => {
   const [loading, setLoading] = useState(false);
 
   // Specializations State
-  const [specializations, setSpecializations] = useState<string[]>([]);
-  const [newSpecialization, setNewSpecialization] = useState('');
-  const [editingSpecialization, setEditingSpecialization] = useState<{ old: string; new: string } | null>(null);
+  const [specializations, setSpecializations] = useState<any[]>([]);
+  const [newSpecialization, setNewSpecialization] = useState({ name: '', name_en: '', description: '' });
+  const [editingSpecialization, setEditingSpecialization] = useState<any>(null);
 
   // Appointment Types State
-  const [appointmentTypes, setAppointmentTypes] = useState<string[]>(['كشف جديد', 'متابعة', 'استشارة', 'فحص دوري']);
-  const [newAppointmentType, setNewAppointmentType] = useState('');
+  const [appointmentTypes, setAppointmentTypes] = useState<any[]>([]);
+  const [newAppointmentType, setNewAppointmentType] = useState({ name: '', name_en: '', duration_minutes: 30 });
 
   // Diagnosis Templates State
-  const [diagnosisTemplates, setDiagnosisTemplates] = useState<Array<{ id: string; name: string; template: string }>>([]);
-  const [newDiagnosis, setNewDiagnosis] = useState({ name: '', template: '' });
+  const [diagnosisTemplates, setDiagnosisTemplates] = useState<any[]>([]);
+  const [newDiagnosis, setNewDiagnosis] = useState({ name: '', content: '', category: '' });
 
   // Treatment Templates State
-  const [treatmentTemplates, setTreatmentTemplates] = useState<Array<{ id: string; name: string; template: string }>>([]);
-  const [newTreatment, setNewTreatment] = useState({ name: '', template: '' });
+  const [treatmentTemplates, setTreatmentTemplates] = useState<any[]>([]);
+  const [newTreatment, setNewTreatment] = useState({ name: '', content: '', category: '' });
 
   useEffect(() => {
-    fetchSpecializations();
-    fetchTemplates();
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchSpecializations(),
+      fetchAppointmentTypes(),
+      fetchDiagnosisTemplates(),
+      fetchTreatmentTemplates(),
+    ]);
+  };
 
   const fetchSpecializations = async () => {
     try {
       const { data, error } = await supabase
-        .from('doctors')
-        .select('specialization');
+        .from('specializations')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
       
       if (error) throw error;
-      
-      const unique = [...new Set(data.map(d => d.specialization).filter(Boolean))];
-      setSpecializations(unique);
+      setSpecializations(data || []);
     } catch (error) {
       console.error('Error fetching specializations:', error);
     }
   };
 
-  const fetchTemplates = () => {
-    // Mock data - في المستقبل يمكن تخزينها في قاعدة البيانات
-    setDiagnosisTemplates([
-      { id: '1', name: 'التهاب الحلق', template: 'التهاب في الحلق مع احتقان واحمرار' },
-      { id: '2', name: 'نزلة برد', template: 'أعراض نزلة برد مع رشح وسعال' },
-    ]);
-    
-    setTreatmentTemplates([
-      { id: '1', name: 'علاج التهاب', template: 'مضاد حيوي + مسكن + راحة' },
-      { id: '2', name: 'علاج نزلة برد', template: 'مضاد للاحتقان + خافض حرارة + سوائل' },
-    ]);
+  const fetchAppointmentTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('appointment_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setAppointmentTypes(data || []);
+    } catch (error) {
+      console.error('Error fetching appointment types:', error);
+    }
+  };
+
+  const fetchDiagnosisTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('diagnosis_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setDiagnosisTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching diagnosis templates:', error);
+    }
+  };
+
+  const fetchTreatmentTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('treatment_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setTreatmentTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching treatment templates:', error);
+    }
   };
 
   const addSpecialization = async () => {
-    if (!newSpecialization.trim()) {
+    if (!newSpecialization.name.trim()) {
       toast({
         title: "خطأ",
         description: "الرجاء إدخال اسم التخصص",
@@ -80,22 +120,27 @@ const SystemManagement = () => {
       return;
     }
 
-    if (specializations.includes(newSpecialization)) {
+    try {
+      const { error } = await supabase
+        .from('specializations')
+        .insert([newSpecialization]);
+
+      if (error) throw error;
+
+      setNewSpecialization({ name: '', name_en: '', description: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة التخصص بنجاح",
+      });
+      fetchSpecializations();
+    } catch (error) {
+      console.error('Error adding specialization:', error);
       toast({
         title: "خطأ",
-        description: "التخصص موجود بالفعل",
+        description: "فشل في إضافة التخصص",
         variant: "destructive",
       });
-      return;
     }
-
-    setSpecializations([...specializations, newSpecialization]);
-    setNewSpecialization('');
-    
-    toast({
-      title: "تم الإضافة",
-      description: "تم إضافة التخصص بنجاح",
-    });
   };
 
   const updateSpecialization = async () => {
@@ -162,26 +207,9 @@ const SystemManagement = () => {
     }
   };
 
-  const addAppointmentType = () => {
-    if (!newAppointmentType.trim()) return;
-    if (appointmentTypes.includes(newAppointmentType)) {
-      toast({
-        title: "خطأ",
-        description: "نوع الموعد موجود بالفعل",
-        variant: "destructive",
-      });
-      return;
-    }
-    setAppointmentTypes([...appointmentTypes, newAppointmentType]);
-    setNewAppointmentType('');
-    toast({
-      title: "تم الإضافة",
-      description: "تم إضافة نوع الموعد بنجاح",
-    });
-  };
 
-  const addDiagnosisTemplate = () => {
-    if (!newDiagnosis.name.trim() || !newDiagnosis.template.trim()) {
+  const addDiagnosisTemplate = async () => {
+    if (!newDiagnosis.name.trim() || !newDiagnosis.content.trim()) {
       toast({
         title: "خطأ",
         description: "الرجاء إدخال جميع البيانات",
@@ -190,23 +218,31 @@ const SystemManagement = () => {
       return;
     }
 
-    const newTemplate = {
-      id: Date.now().toString(),
-      name: newDiagnosis.name,
-      template: newDiagnosis.template,
-    };
+    try {
+      const { error } = await supabase
+        .from('diagnosis_templates')
+        .insert([newDiagnosis]);
 
-    setDiagnosisTemplates([...diagnosisTemplates, newTemplate]);
-    setNewDiagnosis({ name: '', template: '' });
-    
-    toast({
-      title: "تم الإضافة",
-      description: "تم إضافة قالب التشخيص بنجاح",
-    });
+      if (error) throw error;
+
+      setNewDiagnosis({ name: '', content: '', category: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة قالب التشخيص بنجاح",
+      });
+      fetchDiagnosisTemplates();
+    } catch (error) {
+      console.error('Error adding diagnosis template:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة قالب التشخيص",
+        variant: "destructive",
+      });
+    }
   };
 
-  const addTreatmentTemplate = () => {
-    if (!newTreatment.name.trim() || !newTreatment.template.trim()) {
+  const addTreatmentTemplate = async () => {
+    if (!newTreatment.name.trim() || !newTreatment.content.trim()) {
       toast({
         title: "خطأ",
         description: "الرجاء إدخال جميع البيانات",
@@ -215,19 +251,60 @@ const SystemManagement = () => {
       return;
     }
 
-    const newTemplate = {
-      id: Date.now().toString(),
-      name: newTreatment.name,
-      template: newTreatment.template,
-    };
+    try {
+      const { error } = await supabase
+        .from('treatment_templates')
+        .insert([newTreatment]);
 
-    setTreatmentTemplates([...treatmentTemplates, newTemplate]);
-    setNewTreatment({ name: '', template: '' });
-    
-    toast({
-      title: "تم الإضافة",
-      description: "تم إضافة قالب العلاج بنجاح",
-    });
+      if (error) throw error;
+
+      setNewTreatment({ name: '', content: '', category: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة قالب العلاج بنجاح",
+      });
+      fetchTreatmentTemplates();
+    } catch (error) {
+      console.error('Error adding treatment template:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة قالب العلاج",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addAppointmentType = async () => {
+    if (!newAppointmentType.name.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال اسم نوع الموعد",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('appointment_types')
+        .insert([newAppointmentType]);
+
+      if (error) throw error;
+
+      setNewAppointmentType({ name: '', name_en: '', duration_minutes: 30 });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة نوع الموعد بنجاح",
+      });
+      fetchAppointmentTypes();
+    } catch (error) {
+      console.error('Error adding appointment type:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة نوع الموعد",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!permissions.canManageSettings) {
@@ -300,8 +377,8 @@ const SystemManagement = () => {
                 <div className="flex gap-2">
                   <Input
                     placeholder="أدخل تخصص جديد..."
-                    value={newSpecialization}
-                    onChange={(e) => setNewSpecialization(e.target.value)}
+                    value={newSpecialization.name}
+                    onChange={(e) => setNewSpecialization({ ...newSpecialization, name: e.target.value })}
                     onKeyPress={(e) => e.key === 'Enter' && addSpecialization()}
                   />
                   <Button onClick={addSpecialization} variant="medical">
@@ -411,8 +488,8 @@ const SystemManagement = () => {
                 <div className="flex gap-2">
                   <Input
                     placeholder="أدخل نوع موعد جديد..."
-                    value={newAppointmentType}
-                    onChange={(e) => setNewAppointmentType(e.target.value)}
+                    value={newAppointmentType.name}
+                    onChange={(e) => setNewAppointmentType({ ...newAppointmentType, name: e.target.value })}
                     onKeyPress={(e) => e.key === 'Enter' && addAppointmentType()}
                   />
                   <Button onClick={addAppointmentType} variant="medical">
@@ -484,8 +561,8 @@ const SystemManagement = () => {
                         <Label>محتوى التشخيص</Label>
                         <Input
                           placeholder="وصف التشخيص..."
-                          value={newDiagnosis.template}
-                          onChange={(e) => setNewDiagnosis({ ...newDiagnosis, template: e.target.value })}
+                          value={newDiagnosis.content}
+                          onChange={(e) => setNewDiagnosis({ ...newDiagnosis, content: e.target.value })}
                         />
                       </div>
                     </div>
@@ -503,7 +580,7 @@ const SystemManagement = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="font-semibold text-foreground mb-1">{template.name}</h4>
-                          <p className="text-sm text-muted-foreground">{template.template}</p>
+                          <p className="text-sm text-muted-foreground">{template.content}</p>
                         </div>
                         <Button
                           size="icon"
@@ -567,8 +644,8 @@ const SystemManagement = () => {
                         <Label>محتوى العلاج</Label>
                         <Input
                           placeholder="وصف خطة العلاج..."
-                          value={newTreatment.template}
-                          onChange={(e) => setNewTreatment({ ...newTreatment, template: e.target.value })}
+                          value={newTreatment.content}
+                          onChange((e) => setNewTreatment({ ...newTreatment, content: e.target.value })}
                         />
                       </div>
                     </div>
@@ -586,7 +663,7 @@ const SystemManagement = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="font-semibold text-foreground mb-1">{template.name}</h4>
-                          <p className="text-sm text-muted-foreground">{template.template}</p>
+                          <p className="text-sm text-muted-foreground">{template.content}</p>
                         </div>
                         <Button
                           size="icon"
