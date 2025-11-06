@@ -19,8 +19,9 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isDoctor: boolean;
@@ -97,7 +98,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
+    // محاولة تحديد نوع المعرف (بريد إلكتروني، رقم هاتف، أو اسم مستخدم)
+    let email = identifier;
+    
+    // إذا كان رقم هاتف أو اسم مستخدم، ابحث عن البريد الإلكتروني المرتبط
+    if (!identifier.includes('@')) {
+      try {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('email')
+          .or(`phone.eq.${identifier},full_name.eq.${identifier}`)
+          .single();
+        
+        if (profiles?.email) {
+          email = profiles.email;
+        }
+      } catch (error) {
+        // استمر باستخدام المعرف الأصلي
+      }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -114,7 +135,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      toast({
+        title: "خطأ في تسجيل الدخول",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    return { error };
+  };
+
+  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -122,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: fullName,
+          phone: phone,
         },
       },
     });
@@ -164,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile,
     loading,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     isAdmin,

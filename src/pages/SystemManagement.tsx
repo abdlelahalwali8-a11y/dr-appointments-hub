@@ -640,11 +640,11 @@ const SystemManagement = () => {
                          onChange={(e) => setNewTreatment({ ...newTreatment, content: e.target.value })}                        />
                       </div>
                       <div>
-                        <Label>محتوى العلاج</Label>
+                        <Label>الفئة</Label>
                         <Input
-                          placeholder="وصف خطة العلاج..."
-                          value={newTreatment.content}
-                          onChange((e) => setNewTreatment({ ...newTreatment, content: e.target.value })}
+                          placeholder="مثال: أمراض القلب، السكري..."
+                          value={newTreatment.category}
+                          onChange={(e) => setNewTreatment({ ...newTreatment, category: e.target.value })}
                         />
                       </div>
                     </div>

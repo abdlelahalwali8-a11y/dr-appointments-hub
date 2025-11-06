@@ -129,7 +129,30 @@ const Dashboard = () => {
 
       if (todayError) throw todayError;
 
-     name))
+      // Fetch appointments by status
+      const { data: statusCounts, error: statusError } = await supabase
+        .from('appointments')
+        .select('status')
+        .gte('appointment_date', today);
+
+      const statusCountsGrouped = statusCounts?.reduce((acc: any, apt: any) => {
+        const status = apt.status || 'pending';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const statusCountsArray = Object.keys(statusCountsGrouped || {}).map(status => ({
+        status,
+        count: statusCountsGrouped[status],
+      }));
+
+      // Fetch upcoming appointments
+      const { data: upcomingAppts, error: upcomingError } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          patients (full_name),
+          doctors (profiles (full_name))
         `)
         .gte('appointment_date', today)
         .order('appointment_date')
@@ -153,16 +176,18 @@ const Dashboard = () => {
       const revenueByDayData = await fetchRevenueByDay(7);
 
       // Fetch appointments by doctor
-      const appointmentsByDoctorData = await fetchAppointm// Calculate revenue is already done in the previous block, removing redundant code.   setStats({
+      const appointmentsByDoctorData = await fetchAppointmentsByDoctor();
+
+      setStats({
         totalPatients: patientCount || 0,
         totalDoctors: doctorCount || 0,
         todayAppointments: todayAppts?.length || 0,
         todayRevenue,
-        completedAppointments: statusCounts.find((s: any) => s.status === 'completed')?.count || 0,
-        pendingAppointments: statusCounts.find((s: any) => s.status === 'pending')?.count || 0,
-        cancelledAppointments: statusCounts.find((s: any) => s.status === 'cancelled')?.count || 0,
+        completedAppointments: statusCountsArray.find((s: any) => s.status === 'completed')?.count || 0,
+        pendingAppointments: statusCountsArray.find((s: any) => s.status === 'pending')?.count || 0,
+        cancelledAppointments: statusCountsArray.find((s: any) => s.status === 'cancelled')?.count || 0,
         activeUsers: 0, // This would require session tracking
-        appointmentsByStatus: statusCounts,
+        appointmentsByStatus: statusCountsArray,
         revenueByDay: revenueByDayData,
         appointmentsByDoctor: appointmentsByDoctorData,
         upcomingAppointments: upcomingAppts || [],
