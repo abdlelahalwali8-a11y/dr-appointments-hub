@@ -37,23 +37,48 @@ export const useRealtimeSubscription = ({
         (payload) => {
           console.log(`Realtime ${payload.eventType} on ${table}:`, payload);
 
-          if (table === 'appointments' && payload.eventType === 'INSERT') {
-            const newAppointment = payload.new;
+          // Realtime notifications for appointments
+          if (table === 'appointments') {
+            if (payload.eventType === 'INSERT') {
+              const newAppointment = payload.new;
+              showToastNotification({
+                type: 'appointment_status_change',
+                title: '✅ موعد جديد!',
+                message: `تم حجز موعد جديد بتاريخ ${newAppointment.appointment_date} الساعة ${newAppointment.appointment_time}`,
+                status: 'scheduled',
+              });
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedAppointment = payload.new;
+              const oldAppointment = payload.old;
+              
+              // Only show notification if status changed
+              if (updatedAppointment.status !== oldAppointment.status) {
+                const statusText = {
+                  'scheduled': 'مجدول',
+                  'confirmed': 'مؤكد',
+                  'in_progress': 'جاري',
+                  'completed': 'مكتمل',
+                  'cancelled': 'ملغي',
+                  'no_show': 'لم يحضر'
+                }[updatedAppointment.status] || updatedAppointment.status;
+                
+                showToastNotification({
+                  type: 'appointment_status_change',
+                  title: '🔔 تحديث حالة الموعد',
+                  message: `تم تحديث الموعد إلى: ${statusText}`,
+                  status: updatedAppointment.status,
+                });
+              }
+            }
+          }
+          
+          // Realtime notifications for patients
+          if (table === 'patients' && payload.eventType === 'INSERT') {
             showToastNotification({
-              type: 'appointment_status_change',
-              title: 'موعد جديد!',
-              message: `تم حجز موعد جديد بتاريخ ${newAppointment.appointment_date} في ${newAppointment.appointment_time}.`,
-              status: newAppointment.status,
-              link: '/appointments',
-            });
-          } else if (table === 'appointments' && payload.eventType === 'UPDATE') {
-            const updatedAppointment = payload.new;
-            showToastNotification({
-              type: 'appointment_status_change',
-              title: 'تحديث موعد!',
-              message: `تم تحديث حالة موعد إلى: ${updatedAppointment.status}.`,
-              status: updatedAppointment.status,
-              link: '/appointments',
+              type: 'system_alert',
+              title: '👤 مريض جديد',
+              message: `تم تسجيل مريض جديد: ${payload.new.full_name}`,
+              status: 'scheduled',
             });
           }
           
