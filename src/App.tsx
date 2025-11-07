@@ -20,6 +20,7 @@ import Permissions from "./pages/Permissions";
 import QuickBooking from "./pages/QuickBooking";
 import SystemManagement from "./pages/SystemManagement";
 import PermissionsAdvanced from "./pages/PermissionsAdvanced";
+import AppointmentsAdvanced from "./pages/AppointmentsAdvanced";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -49,6 +50,11 @@ const App = () => {
               <Route path="/appointments" element={
                 <ProtectedRoute>
                   <Appointments />
+                </ProtectedRoute>
+              } />
+              <Route path="/appointments-advanced" element={
+                <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
+                  <AppointmentsAdvanced />
                 </ProtectedRoute>
               } />
               <Route path="/patients" element={

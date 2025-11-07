@@ -70,6 +70,12 @@ const Sidebar = () => {
       roles: ['admin', 'doctor', 'receptionist']
     },
     {
+      title: 'المواعيد المتقدمة',
+      icon: Activity,
+      path: '/appointments-advanced',
+      roles: ['admin', 'doctor', 'receptionist']
+    },
+    {
       title: 'المرضى',
       icon: Users,
       path: '/patients',
@@ -115,6 +121,12 @@ const Sidebar = () => {
       title: 'الصلاحيات',
       icon: Shield,
       path: '/permissions',
+      roles: ['admin']
+    },
+    {
+      title: 'الصلاحيات المتقدمة',
+      icon: UserCheck,
+      path: '/permissions-advanced',
       roles: ['admin']
     },
     {
