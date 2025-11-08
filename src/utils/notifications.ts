@@ -41,13 +41,6 @@ export const showToastNotification = (payload: NotificationPayload) => {
     title: payload.title,
     description: payload.message,
     variant: variant,
-    icon: icon,
-    action: payload.link ? {
-      label: 'عرض',
-      onClick: () => {
-        window.location.href = payload.link || '#';
-      }
-    } : undefined,
   });
 };
 

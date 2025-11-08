@@ -19,6 +19,7 @@ import { useSearch } from '@/hooks/useSearch';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useForm, FormErrors } from '@/hooks/useForm';
 import { TextInput, TextAreaField, SelectField } from '@/components/common/FormField';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Appointment {
   id: string;
@@ -43,6 +44,7 @@ interface Appointment {
 
 const AppointmentsAdvanced = () => {
   const permissions = usePermissions();
+  const { formatCurrency } = useCurrency();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
@@ -355,7 +357,7 @@ const AppointmentsAdvanced = () => {
                           </span>
                           <span className="flex items-center gap-1">
                             <DollarSign className="w-4 h-4" />
-                            {apt.cost || apt.doctors.consultation_fee} ر.س
+                            {formatCurrency(apt.cost || apt.doctors.consultation_fee)}
                           </span>
                         </div>
                       </div>
@@ -433,7 +435,7 @@ const AppointmentsAdvanced = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">التكلفة</p>
-                  <p className="font-semibold">{selectedAppointment.cost || selectedAppointment.doctors.consultation_fee} ر.س</p>
+                  <p className="font-semibold">{formatCurrency(selectedAppointment.cost || selectedAppointment.doctors.consultation_fee)}</p>
                 </div>
                 {selectedAppointment.notes && (
                   <div>

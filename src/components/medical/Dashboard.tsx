@@ -6,6 +6,8 @@ import { RecentAppointments } from "./RecentAppointments";
 import { QuickActions } from "./QuickActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { toast } from "sonner";
 
 import heroImage from "../../assets/medical-hero.jpg";
 
@@ -22,6 +24,30 @@ const Dashboard = () => {
     fetchCenterSettings();
     fetchTodayStats();
   }, []);
+
+  // Real-time subscription for appointments
+  useRealtimeSubscription({
+    table: 'appointments',
+    onInsert: () => {
+      fetchTodayStats();
+      toast.success('تم إضافة موعد جديد');
+    },
+    onUpdate: () => {
+      fetchTodayStats();
+    },
+    onDelete: () => {
+      fetchTodayStats();
+    },
+  });
+
+  // Real-time subscription for patients
+  useRealtimeSubscription({
+    table: 'patients',
+    onInsert: () => {
+      fetchTodayStats();
+      toast.success('تم تسجيل مريض جديد');
+    },
+  });
 
   const fetchCenterSettings = async () => {
     const { data } = await supabase

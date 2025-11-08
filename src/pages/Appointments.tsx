@@ -14,6 +14,7 @@ import SearchBar from '@/components/common/SearchBar';
 import { useSearch } from '@/hooks/useSearch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Appointment {
   id: string;
@@ -36,6 +37,7 @@ interface Appointment {
 
 const Appointments = () => {
   const permissions = usePermissions();
+  const { formatCurrency } = useCurrency();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -293,7 +295,7 @@ const Appointments = () => {
                       </div>
                       {appointment.cost && (
                         <div className="text-sm text-success font-medium">
-                          {appointment.cost} ر.س
+                          {formatCurrency(appointment.cost)}
                         </div>
                       )}
                     </div>

@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface DashboardStats {
   totalPatients: number;
@@ -26,6 +27,7 @@ interface DashboardStats {
 
 const Reports = () => {
   const permissions = usePermissions();
+  const { formatCurrency } = useCurrency();
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     totalAppointments: 0,
@@ -253,7 +255,7 @@ const Reports = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">إجمالي الإيرادات</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalRevenue.toLocaleString()} ر.س</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalRevenue)}</p>
                 </div>
               </div>
             </CardContent>
@@ -313,14 +315,14 @@ const Reports = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">هذا الشهر</span>
-                <span className="font-semibold text-green-600">{stats.monthlyRevenue.toLocaleString()} ر.س</span>
+                <span className="font-semibold text-green-600">{formatCurrency(stats.monthlyRevenue)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">متوسط الموعد</span>
                 <span className="font-semibold text-blue-600">
-                  {stats.completedAppointments > 0 
+                  {formatCurrency(stats.completedAppointments > 0 
                     ? Math.round(stats.totalRevenue / stats.completedAppointments)
-                    : 0} ر.س
+                    : 0)}
                 </span>
               </div>
             </CardContent>

@@ -8,6 +8,7 @@ import { Calendar, User, Phone, Clock, Stethoscope, Plus, Search } from 'lucide-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Doctor {
   id: string;
@@ -25,6 +26,7 @@ interface Patient {
 }
 
 const QuickBooking = () => {
+  const { formatCurrency } = useCurrency();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,7 +235,7 @@ const QuickBooking = () => {
                     </h3>
                     <p className="text-sm text-primary">{doctor.specialization}</p>
                     <p className="text-sm text-muted-foreground">
-                      {doctor.consultation_fee} ر.س
+                      {formatCurrency(doctor.consultation_fee)}
                     </p>
                     <Button size="sm" variant="medical" className="w-full">
                       احجز موعد

@@ -21,12 +21,15 @@ import {
   Database
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const Sidebar = () => {
   const { profile, signOut, isAdmin, isDoctor, isReceptionist } = useAuth();
+  const { unreadCount } = useNotifications();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -64,6 +67,12 @@ const Sidebar = () => {
       title: 'المواعيد',
       icon: Calendar,
       path: '/appointments',
+      roles: ['admin', 'doctor', 'receptionist']
+    },
+    {
+      title: 'المواعيد المتقدمة',
+      icon: Activity,
+      path: '/appointments-advanced',
       roles: ['admin', 'doctor', 'receptionist']
     },
     {
@@ -112,6 +121,12 @@ const Sidebar = () => {
       title: 'الصلاحيات',
       icon: Shield,
       path: '/permissions',
+      roles: ['admin']
+    },
+    {
+      title: 'الصلاحيات المتقدمة',
+      icon: UserCheck,
+      path: '/permissions-advanced',
       roles: ['admin']
     },
     {
@@ -216,7 +231,7 @@ const Sidebar = () => {
                 key={item.path}
                 to={item.path}
                 title={isCollapsed ? item.title : ''}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-smooth justify-center md:justify-start ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-smooth justify-center md:justify-start relative ${
                   isActive(item.path)
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -224,6 +239,14 @@ const Sidebar = () => {
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 {!isCollapsed && <span>{item.title}</span>}
+                {item.path === '/notifications' && unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className={`${isCollapsed ? 'absolute -top-1 -right-1' : 'ml-auto'} text-xs px-1.5 py-0.5 min-w-[20px] h-5`}
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
               </NavLink>
             );
           })}
