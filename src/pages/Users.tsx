@@ -327,7 +327,7 @@ const Users = () => {
               إدارة حسابات وصلاحيات المستخدمين
             </p>
           </div>
-          {permissions.canManageUsers && (
+          {permissions.canManageUsers && user.role !== 'admin' && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="medical" className="gap-2">
@@ -499,7 +499,7 @@ const Users = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {permissions.canManageUsers && (
+                    {permissions.canManageUsers && user.role !== 'admin' && (
                       <>
                         <select
                           value={user.role}
@@ -522,7 +522,7 @@ const Users = () => {
 
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)}>
+                            <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)} disabled={user.role === 'admin'}>
                               <Edit className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
@@ -570,7 +570,7 @@ const Users = () => {
 
                         <AlertDialog open={isDeleteDialogOpen && selectedUser?.id === user.id} onOpenChange={setIsDeleteDialogOpen}>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" onClick={() => setSelectedUser(user)}>
+                            <Button size="sm" variant="destructive" onClick={() => setSelectedUser(user)} disabled={user.role === 'admin'}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
