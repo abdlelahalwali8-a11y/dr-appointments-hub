@@ -7,6 +7,7 @@ import { QuickActions } from "./QuickActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
 import heroImage from "../../assets/medical-hero.jpg";
@@ -19,6 +20,7 @@ const Dashboard = () => {
     waiting: 0,
     revenue: 0,
   });
+  const { formatCurrency } = useCurrency();
 
   useEffect(() => {
     fetchCenterSettings();
@@ -109,8 +111,8 @@ const Dashboard = () => {
     },
     {
       title: "الإيرادات اليومية",
-      value: todayStats.revenue.toString(),
-      description: centerSettings?.currency_symbol || "ر.ي",
+      value: formatCurrency(todayStats.revenue),
+      description: "إجمالي اليوم",
       icon: DollarSign,
       trend: "+15%",
       color: "success" as const

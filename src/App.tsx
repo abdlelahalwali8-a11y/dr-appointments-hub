@@ -24,6 +24,7 @@ import SystemManagement from "./pages/SystemManagement";
 import PermissionsAdvanced from "./pages/PermissionsAdvanced";
 import AppointmentsAdvanced from "./pages/AppointmentsAdvanced";
 import NotFound from "./pages/NotFound";
+import Help from "./pages/Help";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,11 @@ const App = () => {
               <Route path="/system-management" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <SystemManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/help" element={
+                <ProtectedRoute>
+                  <Help />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

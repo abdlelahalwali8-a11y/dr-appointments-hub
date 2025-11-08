@@ -18,7 +18,8 @@ import {
   Plus,
   ChevronLeft,
   Menu,
-  Database
+  Database,
+  HelpCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -140,6 +141,12 @@ const Sidebar = () => {
       icon: Database,
       path: '/system-management',
       roles: ['admin']
+    },
+    {
+      title: 'التعليمات والمساعدة',
+      icon: HelpCircle,
+      path: '/help',
+      roles: ['admin', 'doctor', 'receptionist', 'patient']
     }
   ];
 

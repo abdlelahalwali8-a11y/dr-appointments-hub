@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useNavigate } from "react-router-dom";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Appointment {
   id: string;
@@ -31,6 +32,7 @@ export const RecentAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
 
   const fetchAppointments = async () => {
     try {
@@ -162,9 +164,9 @@ export const RecentAppointments = () => {
                   <div className="font-semibold text-foreground">
                     {appointment.appointment_time}
                   </div>
-                  {appointment.cost && (
+                   {appointment.cost && (
                     <div className="text-sm text-success font-medium">
-                      {appointment.cost} ر.ي
+                      {formatCurrency(appointment.cost)}
                     </div>
                   )}
                 </div>
