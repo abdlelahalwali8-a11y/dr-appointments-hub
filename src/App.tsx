@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { InstallPWA } from "@/components/common/InstallPWA";
+import { OfflineIndicator } from "@/components/common/OfflineIndicator";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Appointments from "./pages/Appointments";
@@ -39,6 +41,8 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <OfflineIndicator />
+          <InstallPWA />
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
