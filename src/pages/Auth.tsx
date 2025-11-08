@@ -30,12 +30,6 @@ const Auth = () => {
     identifier: '',
     password: '',
   });
-
-  const [phoneData, setPhoneData] = useState({
-    phone: '',
-    otp: '',
-    otpSent: false,
-  });
   
   const [signUpData, setSignUpData] = useState({
     email: '',
@@ -118,63 +112,7 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin, // أو رابط إعادة توجيه محدد
-      },
-    });
-
-    if (error) {
-      toast({
-        title: "خطأ في Google Sign-in",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-    setIsLoading(false);
-  };
-
-  const handlePhoneSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    if (!phoneData.otpSent) {
-      // الخطوة 1: إرسال رمز التحقق
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phoneData.phone,
-      });
-
-      if (error) {
-        toast({
-          title: "خطأ في إرسال الرمز",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        setPhoneData({ ...phoneData, otpSent: true });
-        toast({
-          title: "تم إرسال الرمز",
-          description: "تم إرسال رمز التحقق إلى هاتفك.",
-        });
-      }
-    } else {
-      // الخطوة 2: التحقق من الرمز وتسجيل الدخول
-      const { error } = await supabase.auth.verifyOtp({
-        phone: phoneData.phone,
-        token: phoneData.otp,
-        type: 'sms',
-      });
-
-      if (error) {
-        toast({
-          title: "خطأ في التحقق",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    }
-
+    await signInWithGoogle();
     setIsLoading(false);
   };
 
@@ -364,9 +302,7 @@ const Auth = () => {
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="signin">تسجيل الدخول</TabsTrigger              <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="signin">بريد/كلمة مرور</TabsTrigger>
-                <TabsTrigger value="phone-signin">هاتف/Google</TabsTrigger>
+                <TabsTrigger value="signin">تسجيل الدخول</TabsTrigger>
                 <TabsTrigger value="signup">إنشاء حساب</TabsTrigger>
                 <TabsTrigger value="booking">حجز موعد</TabsTrigger>
               </TabsList>
@@ -382,163 +318,6 @@ const Auth = () => {
                       onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
                       required
                       placeholder="أدخل البريد الإلكتروني أو رقم الهاتف أو اسم المستخدم"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="signin-password">كلمة المرور</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={signInData.password}
-                      onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    variant="medical"
-                    className="w-full"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : 'تسجيل الدخول'}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="phone-signin">
-                <div className="space-y-4">
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={handleGoogleSignIn}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 48 48">
-                      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,19.033-8.136,19.611-18.083V20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.945,12,24,12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,1.372,0.206,2.71,0.583,4H12V20H4.389C4.143,18.67,4,17.34,4,16C4,14.67,4.143,13.34,4.389,12H6.306z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.69,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.002,0.003-0.003l6.19,5.238C36.921,39.556,44,34.778,44,24C44,22.67,43.857,21.34,43.611,20.083z"></path>
-                    </svg>
-                    تسجيل الدخول عبر Google
-                  </Button>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t"></span>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        أو برقم الهاتف
-                      </span>
-                    </div>
-                  </div>
-                  <form onSubmit={handlePhoneSignIn} className="space-y-4">
-                    <div>
-                      <Label htmlFor="phone-number">رقم الهاتف</Label>
-                      <Input
-                        id="phone-number"
-                        type="tel"
-                        value={phoneData.phone}
-                        onChange={(e) => setPhoneData({ ...phoneData, phone: e.target.value })}
-                        required
-                        className="mt-1"
-                        placeholder="مثال: +966501234567"
-                      />
-                    </div>
-                    {phoneData.otpSent && (
-                      <div>
-                        <Label htmlFor="otp">رمز التحقق (OTP)</Label>
-                        <Input
-                          id="otp"
-                          type="text"
-                          value={phoneData.otp}
-                          onChange={(e) => setPhoneData({ ...phoneData, otp: e.target.value })}
-                          required
-                          className="mt-1"
-                          placeholder="أدخل الرمز المكون من 6 أرقام"
-                        />
-                      </div>
-                    )}
-                    <Button
-                      type="submit"
-                      variant="medical"
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : phoneData.otpSent ? 'تأكيد الدخول' : 'إرسال رمز التحقق'}
-                    </Button>
-                  </form>
-                </div>
-              </TabsContent>             </form>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="phone-signin">
-                <div className="space-y-4">
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2"
-                    onClick={handleGoogleSignIn}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 48 48">
-                      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,19.033-8.136,19.611-18.083V20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.945,12,24,12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,1.372,0.206,2.71,0.583,4H12V20H4.389C4.143,18.67,4,17.34,4,16C4,14.67,4.143,13.34,4.389,12H6.306z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.69,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.002,0.003-0.003l6.19,5.238C36.921,39.556,44,34.778,44,24C44,22.67,43.857,21.34,43.611,20.083z"></path>
-                    </svg>
-                    تسجيل الدخول عبر Google
-                  </Button>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t"></span>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        أو برقم الهاتف
-                      </span>
-                    </div>
-                  </div>
-                  <form onSubmit={handlePhoneSignIn} className="space-y-4">
-                    <div>
-                      <Label htmlFor="phone-number">رقم الهاتف</Label>
-                      <Input
-                        id="phone-number"
-                        type="tel"
-                        value={phoneData.phone}
-                        onChange={(e) => setPhoneData({ ...phoneData, phone: e.target.value })}
-                        required
-                        className="mt-1"
-                        placeholder="مثال: +966501234567"
-                      />
-                    </div>
-                    {phoneData.otpSent && (
-                      <div>
-                        <Label htmlFor="otp">رمز التحقق (OTP)</Label>
-                        <Input
-                          id="otp"
-                          type="text"
-                          value={phoneData.otp}
-                          onChange={(e) => setPhoneData({ ...phoneData, otp: e.target.value })}
-                          required
-                          className="mt-1"
-                          placeholder="أدخل الرمز المكون من 6 أرقام"
-                        />
-                      </div>
-                    )}
-                    <Button
-                      type="submit"
-                      variant="medical"
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : phoneData.otpSent ? 'تأكيد الدخول' : 'إرسال رمز التحقق'}
-                    </Button>
-                  </form>
-                </div>
-              </TabsContent>
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <Label htmlFor="signin-email">البريد الإلكتروني</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                      required
                       className="mt-1"
                     />
                   </div>
