@@ -238,7 +238,7 @@ const Auth = () => {
           patient_id: patientId,
           doctor_id: quickBookingData.doctorId,
           appointment_date: quickBookingData.appointmentDate,
-          appointment_time: quickBookingData.appointmentTime,
+          appointment_time: quickBookingData.appointmentTime || '09:00',
           status: 'scheduled',
           notes: quickBookingData.notes || null,
         });
@@ -652,7 +652,6 @@ const Auth = () => {
                         type="time"
                         value={quickBookingData.appointmentTime}
                         onChange={(e) => setQuickBookingData({ ...quickBookingData, appointmentTime: e.target.value })}
-                        required
                         className="mt-1"
                       />
                     </div>

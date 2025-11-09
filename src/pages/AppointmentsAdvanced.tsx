@@ -27,7 +27,7 @@ interface Appointment {
   doctor_id: string;
   appointment_date: string;
   appointment_time: string;
-  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'return' | 'waiting';
+  status: 'scheduled' | 'waiting' | 'completed' | 'cancelled' | 'return';
   notes?: string;
   cost?: number;
   patients: {
@@ -208,18 +208,18 @@ const AppointmentsAdvanced = () => {
   };
 
   const statusColors: Record<string, string> = {
-    scheduled: 'bg-blue-100 text-blue-800',
-    pending: 'bg-yellow-100 text-yellow-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    return: 'bg-purple-100 text-purple-800',
+    scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    waiting: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    return: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
 
   const statusLabels: Record<string, string> = {
     scheduled: 'مجدول',
-    pending: 'في الانتظار',
+    waiting: 'في الانتظار',
     completed: 'مكتمل',
-    cancelled: 'ملغى',
+    cancelled: 'ملغي',
     return: 'عودة',
   };
 

@@ -55,11 +55,10 @@ export const useRealtimeSubscription = ({
               if (updatedAppointment.status !== oldAppointment.status) {
                 const statusText = {
                   'scheduled': 'مجدول',
-                  'confirmed': 'مؤكد',
-                  'in_progress': 'جاري',
+                  'waiting': 'في الانتظار',
                   'completed': 'مكتمل',
-                  'cancelled': 'ملغي',
-                  'no_show': 'لم يحضر'
+                  'return': 'عودة',
+                  'cancelled': 'ملغي'
                 }[updatedAppointment.status] || updatedAppointment.status;
                 
                 showToastNotification({

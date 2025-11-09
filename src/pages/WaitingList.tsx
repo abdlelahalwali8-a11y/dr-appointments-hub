@@ -71,7 +71,9 @@ const WaitingList = () => {
   // Real-time subscription
   useRealtimeSubscription({
     table: 'appointments',
+    onInsert: () => fetchWaitingAppointments(),
     onUpdate: () => fetchWaitingAppointments(),
+    onDelete: () => fetchWaitingAppointments(),
   });
 
   const updateAppointmentStatus = async (appointmentId: string, newStatus: 'scheduled' | 'completed') => {
@@ -87,6 +89,9 @@ const WaitingList = () => {
         title: "تم التحديث",
         description: `تم ${newStatus === 'completed' ? 'إكمال' : 'جدولة'} الموعد`,
       });
+      
+      // Refresh the list after status update
+      fetchWaitingAppointments();
     } catch (error) {
       console.error('Error updating appointment:', error);
       toast({

@@ -15,7 +15,7 @@ interface Appointment {
   doctor_id: string;
   appointment_time: string;
   appointment_date: string;
-  status: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "waiting" | "completed" | "return" | "cancelled";
   cost?: number;
   patients?: {
     full_name: string;
@@ -79,17 +79,16 @@ export const RecentAppointments = () => {
 
   const getStatusBadge = (status: Appointment["status"]) => {
     const statusConfig = {
-      scheduled: { label: "مجدول", variant: "default" as const },
-      confirmed: { label: "مؤكد", variant: "secondary" as const },
-      in_progress: { label: "جاري", variant: "secondary" as const },
-      completed: { label: "مكتمل", variant: "default" as const },
-      cancelled: { label: "ملغي", variant: "destructive" as const },
-      no_show: { label: "لم يحضر", variant: "destructive" as const },
+      scheduled: { label: "مجدول", variant: "default" as const, color: "bg-blue-100 text-blue-800" },
+      waiting: { label: "في الانتظار", variant: "secondary" as const, color: "bg-yellow-100 text-yellow-800" },
+      completed: { label: "مكتمل", variant: "default" as const, color: "bg-green-100 text-green-800" },
+      return: { label: "عودة", variant: "secondary" as const, color: "bg-purple-100 text-purple-800" },
+      cancelled: { label: "ملغي", variant: "destructive" as const, color: "bg-red-100 text-red-800" },
     };
 
-    const config = statusConfig[status];
+    const config = statusConfig[status] || statusConfig.scheduled;
     return (
-      <Badge variant={config.variant} className="text-xs">
+      <Badge variant={config.variant} className={`text-xs ${config.color}`}>
         {config.label}
       </Badge>
     );
