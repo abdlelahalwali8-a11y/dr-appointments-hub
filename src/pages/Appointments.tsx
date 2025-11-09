@@ -175,30 +175,30 @@ const Appointments = () => {
 
   return (
     <Layout>
-      <div className="p-4 md:p-6 space-y-6">
+      <div className="p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">إدارة المواعيد</h1>
-            <p className="text-muted-foreground mt-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
+          <div className="w-full sm:w-auto">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">إدارة المواعيد</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
               إدارة وتتبع مواعيد المرضى ({filteredAppointments.length})
             </p>
           </div>
-          <Button variant="medical" className="w-full md:w-auto">
-            <Plus className="w-4 h-4 ml-2" />
+          <Button variant="medical" className="w-full sm:w-auto text-sm md:text-base">
+            <Plus className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
             موعد جديد
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="ابحث عن الموعد..."
           />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="text-sm">
               <SelectValue placeholder="تصفية حسب الحالة" />
             </SelectTrigger>
             <SelectContent>
@@ -211,7 +211,7 @@ const Appointments = () => {
             </SelectContent>
           </Select>
           <Select value={dateFilter} onValueChange={setDateFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="text-sm">
               <SelectValue placeholder="تصفية حسب التاريخ" />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +222,7 @@ const Appointments = () => {
             </SelectContent>
           </Select>
           <Select value={doctorFilter} onValueChange={setDoctorFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="text-sm">
               <SelectValue placeholder="تصفية حسب الطبيب" />
             </SelectTrigger>
             <SelectContent>
@@ -254,75 +254,77 @@ const Appointments = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {filteredAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-lg bg-accent/30 hover:bg-accent/50 transition-smooth gap-4"
-                >
-                  <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                        {appointment.patients.full_name.split(' ')[0][0]}
-                        {appointment.patients.full_name.split(' ')[1]?.[0] || ''}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-semibold text-foreground truncate">
-                          {appointment.patients.full_name}
-                        </h4>
-                        {getStatusBadge(appointment.status)}
-                      </div>
-                      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          د. {appointment.doctors.profiles.full_name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {appointment.patients.phone}
-                        </span>
+                  <div
+                    key={appointment.id}
+                    className="flex flex-col gap-3 p-3 sm:p-4 rounded-lg bg-accent/30 hover:bg-accent/50 transition-smooth"
+                  >
+                    <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                        <AvatarFallback className="bg-primary/20 text-primary font-semibold text-sm">
+                          {appointment.patients.full_name.split(' ')[0][0]}
+                          {appointment.patients.full_name.split(' ')[1]?.[0] || ''}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">
+                            {appointment.patients.full_name}
+                          </h4>
+                          {getStatusBadge(appointment.status)}
+                        </div>
+                        <div className="flex flex-col gap-1 text-xs sm:text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1 truncate">
+                            <User className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">د. {appointment.doctors.profiles.full_name}</span>
+                          </span>
+                          <span className="flex items-center gap-1 truncate">
+                            <Phone className="w-3 h-3 flex-shrink-0" />
+                            {appointment.patients.phone}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="text-left">
-                      <div className="font-semibold text-foreground">
-                        {new Date(appointment.appointment_date).toLocaleDateString('ar-SA')}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="text-sm">
+                        <div className="font-semibold text-foreground">
+                          {new Date(appointment.appointment_date).toLocaleDateString('ar-SA')}
+                        </div>
+                        <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {appointment.appointment_time}
+                        </div>
+                        {appointment.cost && (
+                          <div className="text-xs sm:text-sm text-success font-medium">
+                            {formatCurrency(appointment.cost)}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {appointment.appointment_time}
-                      </div>
-                      {appointment.cost && (
-                        <div className="text-sm text-success font-medium">
-                          {formatCurrency(appointment.cost)}
+                      {permissions.canEditAppointments && (
+                        <div className="flex gap-2">
+                          {appointment.status === 'scheduled' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateAppointmentStatus(appointment.id, 'waiting')}
+                              className="text-xs"
+                            >
+                              انتظار
+                            </Button>
+                          )}
+                          {appointment.status === 'waiting' && (
+                            <Button
+                              size="sm"
+                              variant="medical"
+                              onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
+                              className="text-xs"
+                            >
+                              مكتمل
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
-                    {permissions.canEditAppointments && (
-                      <div className="flex gap-2">
-                        {appointment.status === 'scheduled' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateAppointmentStatus(appointment.id, 'waiting')}
-                          >
-                            انتظار
-                          </Button>
-                        )}
-                        {appointment.status === 'waiting' && (
-                          <Button
-                            size="sm"
-                            variant="medical"
-                            onClick={() => updateAppointmentStatus(appointment.id, 'completed')}
-                          >
-                            مكتمل
-                          </Button>
-                        )}
-                      </div>
-                    )}
                   </div>
-                </div>
               ))}
             </CardContent>
           </Card>
