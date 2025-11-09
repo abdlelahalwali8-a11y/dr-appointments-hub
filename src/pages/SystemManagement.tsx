@@ -637,7 +637,7 @@ const SystemManagement = () => {
                         <Input
                           placeholder="مثال: علاج التهاب"
                           value={newTreatment.name}
-                         onChange={(e) => setNewTreatment({ ...newTreatment, content: e.target.value })}                        />
+                         oonChange={(e) => setNewTreatment({ ...newTreatment, content: e.target.value })}                        />
                       </div>
                       <div>
                         <Label>الفئة</Label>
