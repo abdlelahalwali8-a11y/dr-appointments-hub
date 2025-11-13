@@ -1,0 +1,428 @@
+diff --git a/src/components/medical/QuickActions.tsx b/src/components/medical/QuickActions.tsx
+index 9791e7b..f49ea2e 100644
+--- a/src/components/medical/QuickActions.tsx
++++ b/src/components/medical/QuickActions.tsx
+@@ -11,36 +11,90 @@ import {
+   Clock,
+   Settings
+ } from "lucide-react";
++import { useNavigate } from "react-router-dom";
++import { useEffect, useState } from "react";
++import { supabase } from "@/integrations/supabase/client";
++import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
++import { useCurrency } from "@/hooks/useCurrency";
+ 
+ export const QuickActions = () => {
++  const navigate = useNavigate();
++  const [summary, setSummary] = useState({
++    completed: 0,
++    waiting: 0,
++    cancelled: 0,
++    revenue: 0,
++  });
++  const { formatCurrency } = useCurrency();
++
++  const fetchSummary = async () => {
++    const today = new Date().toISOString().split('T')[0];
++    
++    const { data: appointments } = await supabase
++      .from('appointments')
++      .select('status, cost, doctors(consultation_fee)')
++      .eq('appointment_date', today);
++
++    if (!appointments) return;
++
++    const completed = appointments.filter(apt => apt.status === 'completed').length;
++    const waiting = appointments.filter(apt => apt.status === 'scheduled' || apt.status === 'waiting').length;
++    const cancelled = appointments.filter(apt => apt.status === 'cancelled').length;
++    
++    const totalRevenue = appointments
++      .filter(apt => apt.status === 'completed')
++      .reduce((sum, apt) => {
++        return sum + (apt.cost || apt.doctors?.consultation_fee || 0);
++      }, 0);
++
++    setSummary({
++      completed,
++      waiting,
++      cancelled,
++      revenue: totalRevenue,
++    });
++  };
++
++  useEffect(() => {
++    fetchSummary();
++  }, []);
++
++  useRealtimeSubscription({
++    table: 'appointments',
++    onInsert: fetchSummary,
++    onUpdate: fetchSummary,
++    onDelete: fetchSummary,
++  });
++
++  const quickActions = [
+   const quickActions = [
+     {
+       title: "موعد جديد",
+       description: "حجز موعد لمريض",
+       icon: Calendar,
+       color: "bg-primary/10 text-primary",
+-      action: "book-appointment"
++      action: "/appointments"
+     },
+     {
+       title: "مريض جديد",
+       description: "إضافة مريض جديد",
+       icon: UserPlus,
+       color: "bg-success/10 text-success",
+-      action: "add-patient"
++      action: "/patients"
+     },
+     {
+       title: "إدارة الأطباء",
+       description: "عرض وإدارة الأطباء",
+       icon: Stethoscope,
+       color: "bg-warning/10 text-warning",
+-      action: "manage-doctors"
++      action: "/doctors"
+     },
+     {
+       title: "التقارير",
+       description: "عرض التقارير والإحصائيات",
+       icon: FileText,
+       color: "bg-destructive/10 text-destructive",
+-      action: "reports"
++      action: "/reports"
+     }
+   ];
+ 
+@@ -86,6 +140,7 @@ export const QuickActions = () => {
+               key={index}
+               variant="ghost"
+               className="w-full justify-start h-auto p-4 hover:bg-accent/50 transition-smooth"
++              onClick={() => navigate(action.action)}
+             >
+               <div className="flex items-center gap-3 w-full">
+                 <div className={`p-2 rounded-lg ${action.color}`}>
+@@ -116,20 +171,20 @@ export const QuickActions = () => {
+         <CardContent className="space-y-4">
+           <div className="flex justify-between items-center">
+             <span className="text-sm text-muted-foreground">المواعيد المكتملة</span>
+-            <span className="font-semibold text-success">18</span>
++            <span className="font-semibold text-success">{summary.completed}</span>
+           </div>
+           <div className="flex justify-between items-center">
+             <span className="text-sm text-muted-foreground">في الانتظار</span>
+-            <span className="font-semibold text-warning">7</span>
++            <span className="font-semibold text-warning">{summary.waiting}</span>
+           </div>
+           <div className="flex justify-between items-center">
+             <span className="text-sm text-muted-foreground">الملغية</span>
+-            <span className="font-semibold text-destructive">2</span>
++            <span className="font-semibold text-destructive">{summary.cancelled}</span>
+           </div>
+           <div className="pt-2 border-t">
+             <div className="flex justify-between items-center">
+               <span className="text-sm font-medium">إجمالي الإيرادات</span>
+-              <span className="font-bold text-primary text-lg">12,450 ر.س</span>
++              <span className="font-bold text-primary text-lg">{formatCurrency(summary.revenue)}</span>
+             </div>
+           </div>
+         </CardContent>
+diff --git a/src/pages/Appointments.tsx b/src/pages/Appointments.tsx
+index 9834f3f..40f7384 100644
+--- a/src/pages/Appointments.tsx
++++ b/src/pages/Appointments.tsx
+@@ -1,10 +1,14 @@
+ import React, { useState, useEffect } from 'react';
+-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
++import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+ import { Button } from '@/components/ui/button';
+-import { Input } from '@/components/ui/input';
++import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
++import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+ import { Badge } from '@/components/ui/badge';
+-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+-import { Calendar, Plus, Clock, Phone, User, AlertCircle } from 'lucide-react';
++import { Alert, AlertDescription } from '@/components/ui/alert';
++import {
++  Calendar, Clock, User, DollarSign, CheckCircle2, AlertCircle, Trash2, Edit,
++  ChevronLeft, ChevronRight, Eye
++} from 'lucide-react';
+ import { supabase } from '@/integrations/supabase/client';
+ import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+ import { toast } from '@/hooks/use-toast';
+@@ -12,15 +16,19 @@ import { usePermissions } from '@/hooks/usePermissions';
+ import Layout from '@/components/layout/Layout';
+ import SearchBar from '@/components/common/SearchBar';
+ import { useSearch } from '@/hooks/useSearch';
++import ConfirmDialog from '@/components/common/ConfirmDialog';
++import { useForm, FormErrors } from '@/hooks/useForm';
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+-import { Alert, AlertDescription } from '@/components/ui/alert';
++import { TextInput, TextAreaField, SelectField } from '@/components/common/FormField';
+ import { useCurrency } from '@/hooks/useCurrency';
+ 
+ interface Appointment {
+   id: string;
++  patient_id: string;
++  doctor_id: string;
+   appointment_date: string;
+   appointment_time: string;
+-  status: 'scheduled' | 'waiting' | 'completed' | 'return' | 'cancelled';
++  status: 'scheduled' | 'waiting' | 'completed' | 'cancelled' | 'return';
+   notes?: string;
+   cost?: number;
+   patients: {
+@@ -28,10 +36,10 @@ interface Appointment {
+     phone: string;
+   };
+   doctors: {
++    consultation_fee: number;
+     profiles: {
+       full_name: string;
+     };
+-    specialization: string;
+   };
+ }
+ 
+@@ -40,14 +48,13 @@ const Appointments = () => {
+   const { formatCurrency } = useCurrency();
+   const [appointments, setAppointments] = useState<Appointment[]>([]);
+   const [loading, setLoading] = useState(true);
+-  const [statusFilter, setStatusFilter] = useState<string>('all');
+-  const [dateFilter, setDateFilter] = useState<string>('all');
+-  const [doctorFilter, setDoctorFilter] = useState<string>('all');
+-  
+-  const { searchTerm, setSearchTerm, filteredData: searchedAppointments } = useSearch(appointments, {
+-    fields: ['patients.full_name', 'patients.phone', 'doctors.profiles.full_name'],
+-    minChars: 0,
+-  });
++  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
++  const [currentDate, setCurrentDate] = useState(new Date());
++  const [searchTerm, setSearchTerm] = useState('');
++  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
++  const [isEditOpen, setIsEditOpen] = useState(false);
++  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
++  const [isViewOpen, setIsViewOpen] = useState(false);
+ 
+   const fetchAppointments = async () => {
+     try {
+@@ -55,29 +62,19 @@ const Appointments = () => {
+         .from('appointments')
+         .select(`
+           *,
+-          patients (
+-            full_name,
+-            phone
+-          ),
++          patients (full_name, phone),
+           doctors (
+-            profiles (
+-              full_name
+-            ),
+-            specialization
++            consultation_fee,
++            profiles (full_name)
+           )
+         `)
+-        .order('appointment_date', { ascending: true })
+-        .order('appointment_time', { ascending: true });
++        .order('appointment_date', { ascending: true });
+ 
+       if (error) throw error;
+       setAppointments(data || []);
+     } catch (error) {
+       console.error('Error fetching appointments:', error);
+-      toast({
+-        title: "خطأ",
+-        description: "فشل في تحميل المواعيد",
+-        variant: "destructive",
+-      });
++      toast({ title: "خطأ", description: "فشل في تحميل المواعيد", variant: "destructive" });
+     } finally {
+       setLoading(false);
+     }
+@@ -87,7 +84,7 @@ const Appointments = () => {
+     fetchAppointments();
+   }, []);
+ 
+-  // Real-time subscription for appointments
++  // Real-time subscription
+   useRealtimeSubscription({
+     table: 'appointments',
+     onInsert: () => fetchAppointments(),
+@@ -95,70 +92,137 @@ const Appointments = () => {
+     onDelete: () => fetchAppointments(),
+   });
+ 
+-  const getStatusBadge = (status: Appointment['status']) => {
+-    const statusConfig = {
+-      scheduled: { label: 'مجدول', variant: 'default' as const, color: 'bg-blue-100 text-blue-800' },
+-      waiting: { label: 'في الانتظار', variant: 'secondary' as const, color: 'bg-yellow-100 text-yellow-800' },
+-      completed: { label: 'مكتمل', variant: 'default' as const, color: 'bg-green-100 text-green-800' },
+-      return: { label: 'عودة', variant: 'outline' as const, color: 'bg-purple-100 text-purple-800' },
+-      cancelled: { label: 'ملغي', variant: 'destructive' as const, color: 'bg-red-100 text-red-800' },
+-    };
++  // Update Appointment Status
++  const handleStatusChange = async (appointmentId: string, newStatus: string) => {
++    try {
++      let updateData: any = { status: newStatus };
+ 
+-    const config = statusConfig[status];
+-    return (
+-      <Badge variant={config.variant} className={`text-xs ${config.color}`}>
+-        {config.label}
+-      </Badge>
+-    );
+-  };
++      // Auto-calculate cost when marking as completed
++      if (newStatus === 'completed') {
++        const apt = appointments.find(a => a.id === appointmentId);
++        if (apt) {
++          updateData.cost = apt.doctors.consultation_fee;
++        }
++      }
+ 
+-  const updateAppointmentStatus = async (appointmentId: string, newStatus: Appointment['status']) => {
+-    try {
+       const { error } = await supabase
+         .from('appointments')
+-        .update({ status: newStatus })
++        .update(updateData)
+         .eq('id', appointmentId);
+ 
+       if (error) throw error;
+ 
+-      toast({
+-        title: "تم التحديث",
+-        description: "تم تحديث حالة الموعد بنجاح",
+-      });
+-    } catch (error) {
+-      console.error('Error updating appointment:', error);
+-      toast({
+-        title: "خطأ",
+-        description: "فشل في تحديث حالة الموعد",
+-        variant: "destructive",
+-      });
++      toast({ title: "تم التحديث", description: "تم تحديث حالة الموعد بنجاح" });
++      fetchAppointments();
++    } catch (error: any) {
++      toast({ title: "خطأ", description: error.message || "فشل في تحديث الموعد", variant: "destructive" });
+     }
+   };
+ 
+-  const filteredAppointments = searchedAppointments.filter(appointment => {
+-    const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter;
+-    const matchesDoctor = doctorFilter === 'all' || appointment.doctors.profiles.full_name === doctorFilter;
+-    
+-    let matchesDate = true;
+-    if (dateFilter !== 'all') {
+-      const appointmentDate = new Date(appointment.appointment_date);
+-      const today = new Date();
+-      const tomorrow = new Date(today);
+-      tomorrow.setDate(tomorrow.getDate() + 1);
+-      
+-      if (dateFilter === 'today') {
+-        matchesDate = appointmentDate.toDateString() === today.toDateString();
+-      } else if (dateFilter === 'tomorrow') {
+-        matchesDate = appointmentDate.toDateString() === tomorrow.toDateString();
+-      } else if (dateFilter === 'upcoming') {
+-        matchesDate = appointmentDate >= today;
+-      }
++  // Delete Appointment
++  const handleDeleteAppointment = async () => {
++    if (!selectedAppointment) return;
++
++    try {
++      const { error } = await supabase
++        .from('appointments')
++        .delete()
++        .eq('id', selectedAppointment.id);
++
++      if (error) throw error;
++
++      toast({ title: "تم الحذف", description: "تم حذف الموعد بنجاح" });
++      setIsDeleteOpen(false);
++      setSelectedAppointment(null);
++      fetchAppointments();
++    } catch (error: any) {
++      toast({ title: "خطأ", description: error.message || "فشل في حذف الموعد", variant: "destructive" });
+     }
+-    
+-    return matchesStatus && matchesDoctor && matchesDate;
++  };
++
++  // Search and Filter
++  const { searchTerm: filteredSearchTerm, setSearchTerm: setFilteredSearchTerm, filteredData: searchedAppointments } = useSearch(appointments, {
++    fields: ['patients.full_name', 'doctors.profiles.full_name', 'status'],
++    minChars: 0,
+   });
+ 
+-  const uniqueDoctors = [...new Set(appointments.map(a => a.doctors.profiles.full_name))];
++  // Calendar View
++  const getDaysInMonth = (date: Date) => {
++    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
++  };
++
++  const getFirstDayOfMonth = (date: Date) => {
++    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
++  };
++
++  const getAppointmentsForDate = (date: Date) => {
++    const dateStr = date.toISOString().split('T')[0];
++    return appointments.filter(apt => apt.appointment_date === dateStr);
++  };
++
++  const renderCalendar = () => {
++    const daysInMonth = getDaysInMonth(currentDate);
++    const firstDay = getFirstDayOfMonth(currentDate);
++    const days = [];
++
++    // Empty cells for days before month starts
++    for (let i = 0; i < firstDay; i++) {
++      days.push(<div key={`empty-${i}`} className="p-2"></div>);
++    }
++
++    // Days of month
++    for (let day = 1; day <= daysInMonth; day++) {
++      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
++      const dayAppointments = getAppointmentsForDate(date);
++      const isToday = new Date().toDateString() === date.toDateString();
++
++      days.push(
++        <div
++          key={day}
++          className={`p-2 border rounded-lg min-h-24 ${isToday ? 'bg-primary/10 border-primary' : 'bg-accent/30'}`}
++        >
++          <p className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : 'text-foreground'}`}>
++            {day}
++          </p>
++          <div className="space-y-1">
++            {dayAppointments.slice(0, 2).map(apt => (
++              <div
++                key={apt.id}
++                onClick={() => {
++                  setSelectedAppointment(apt);
++                  setIsViewOpen(true);
++                }}
++                className="text-xs p-1 rounded bg-primary/20 text-primary cursor-pointer hover:bg-primary/30 truncate"
++              >
++                {apt.patients.full_name}
++              </div>
++            ))}
++            {dayAppointments.length > 2 && (
++              <p className="text-xs text-muted-foreground">+{dayAppointments.length - 2} أخرى</p>
++            )}
++          </div>
++        </div>
++      );
++    }
++
++    return days;
++  };
++
++  const statusColors: Record<string, string> = {
++    scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+(Content truncated due to size limit. Use page ranges or line ranges to read remaining content)
