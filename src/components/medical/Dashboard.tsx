@@ -62,20 +62,14 @@ const Dashboard = () => {
   const fetchTodayStats = async () => {
     const today = new Date().toISOString().split('T')[0];
     
-    // Fetch today's appointments with real-time data
+    // Fetch today's appointments
     const { data: appointments } = await supabase
       .from('appointments')
-      .select('*, cost, doctors(consultation_fee)')
+      .select('*, cost')
       .eq('appointment_date', today);
 
-    // Calculate real revenue (completed appointments)
-    const completedAppointments = appointments?.filter(apt => apt.status === 'completed') || [];
-    const totalRevenue = completedAppointments.reduce((sum, apt) => {
-      return sum + (apt.cost || apt.doctors?.consultation_fee || 0);
-    }, 0);
-
-    // Count waiting appointments (scheduled or waiting status)
-    const waiting = appointments?.filter(apt => apt.status === 'scheduled' || apt.status === 'waiting').length || 0;
+    const totalRevenue = appointments?.reduce((sum, apt) => sum + (apt.cost || 0), 0) || 0;
+    const waiting = appointments?.filter(apt => apt.status === 'scheduled').length || 0;
 
     // Fetch total active patients
     const { count: patientsCount } = await supabase
@@ -94,74 +88,72 @@ const Dashboard = () => {
     {
       title: "مواعيد اليوم",
       value: todayStats.appointments.toString(),
-      description: todayStats.appointments === 1 ? "موعد مجدول" : "موعد مجدول",
+      description: "موعد مجدول",
       icon: Calendar,
-      trend: todayStats.appointments > 0 ? "✓" : "0",
+      trend: "+12%",
       color: "primary" as const
     },
     {
-      title: "المرضى المسجلين",
+      title: "المرضى النشطين",
       value: todayStats.patients.toString(),
-      description: todayStats.patients === 1 ? "مريض" : "مريض",
+      description: "مريض مسجل",
       icon: Users,
-      trend: "✓",
+      trend: "+8%",
       color: "success" as const
     },
     {
       title: "في الانتظار",
       value: todayStats.waiting.toString(),
-      description: todayStats.waiting === 0 ? "لا يوجد" : "مريض ينتظر",
+      description: "مريض ينتظر",
       icon: Clock,
-      trend: todayStats.waiting > 0 ? "⏳" : "✓",
-      color: todayStats.waiting > 0 ? "warning" as const : "success" as const
+      trend: "0%",
+      color: "warning" as const
     },
     {
-      title: "إيرادات اليوم",
+      title: "الإيرادات اليومية",
       value: formatCurrency(todayStats.revenue),
-      description: "المواعيد المكتملة",
+      description: "إجمالي اليوم",
       icon: DollarSign,
-      trend: todayStats.revenue > 0 ? "💰" : "0",
+      trend: "+15%",
       color: "success" as const
     }
   ];
 
   return (
-    <div className="min-h-screen bg-background p-2 sm:p-4 md:p-6" dir="rtl">
+    <div className="min-h-screen bg-background p-6" dir="rtl">
       {/* Header */}
-      <div className="mb-6 md:mb-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="w-full sm:w-auto">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              {centerSettings?.center_name || 'مركز د أحمد قايد سالم الطبي'}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+              مركز د أحمد قايد سالم الطبي
             </h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">
+            <p className="text-muted-foreground mt-2">
               نظام إدارة المواعيد والمرضى
             </p>
           </div>
-          <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
-            <Button size="sm" variant="outline" className="flex-1 sm:flex-none text-xs md:text-sm">
-              <Activity className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">تقرير يومي</span>
-              <span className="sm:hidden">تقرير</span>
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="outline">
+              <Activity className="w-4 h-4 ml-2" />
+              تقرير يومي
             </Button>
-            <Button size="sm" variant="medical" className="flex-1 sm:flex-none text-xs md:text-sm">
-              <UserPlus className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">مريض جديد</span>
-              <span className="sm:hidden">جديد</span>
+            <Button size="sm" variant="medical">
+              <UserPlus className="w-4 h-4 ml-2" />
+              مريض جديد
             </Button>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Appointments */}
         <div className="lg:col-span-2">
           <RecentAppointments />

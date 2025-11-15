@@ -238,33 +238,29 @@ const AppointmentsAdvanced = () => {
 
   return (
     <Layout>
-      <div className="p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
-          <div className="w-full sm:w-auto">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">إدارة المواعيد</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">إدارة المواعيد</h1>
+            <p className="text-muted-foreground mt-1">
               إدارة شاملة لجدولة المواعيد ({appointments.length})
             </p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex gap-2">
             <Button
-              size="sm"
               variant={viewMode === 'calendar' ? 'medical' : 'outline'}
               onClick={() => setViewMode('calendar')}
-              className="flex-1 sm:flex-none text-xs md:text-sm"
             >
-              <Calendar className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">تقويم</span>
+              <Calendar className="w-4 h-4 ml-2" />
+              تقويم
             </Button>
             <Button
-              size="sm"
               variant={viewMode === 'list' ? 'medical' : 'outline'}
               onClick={() => setViewMode('list')}
-              className="flex-1 sm:flex-none text-xs md:text-sm"
             >
-              <Eye className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">قائمة</span>
+              <Eye className="w-4 h-4 ml-2" />
+              قائمة
             </Button>
           </div>
         </div>

@@ -106,66 +106,65 @@ export const RecentAppointments = () => {
 
   return (
     <Card className="card-gradient border-0 medical-shadow">
-      <CardHeader className="pb-3 md:pb-4 p-3 sm:p-4 md:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base sm:text-lg md:text-xl font-semibold flex items-center gap-2">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
             مواعيد اليوم
           </CardTitle>
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => navigate('/appointments')}
-            className="text-xs sm:text-sm"
           >
             عرض الكل
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 md:space-y-4 p-3 sm:p-4 md:p-6">
+      <CardContent className="space-y-4">
         {appointments.length === 0 ? (
-          <div className="text-center py-6 md:py-8 text-sm text-muted-foreground">
+          <div className="text-center py-8 text-muted-foreground">
             لا توجد مواعيد اليوم
           </div>
         ) : (
           appointments.map((appointment) => (
             <div
               key={appointment.id}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 md:p-4 rounded-lg bg-accent/50 hover:bg-accent/80 transition-smooth animate-slide-up gap-3 sm:gap-4"
+              className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent/80 transition-smooth animate-slide-up"
             >
-              <div className="flex items-start gap-2 sm:gap-3 md:gap-4 flex-1 w-full sm:w-auto">
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                  <AvatarFallback className="bg-primary/20 text-primary font-semibold text-xs sm:text-sm">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                     {appointment.patients?.full_name?.split(" ")[0]?.[0] || "؟"}
                     {appointment.patients?.full_name?.split(" ")[1]?.[0] || ""}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h4 className="font-medium text-sm sm:text-base text-foreground truncate">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-foreground">
                       {appointment.patients?.full_name || "غير محدد"}
                     </h4>
                     {getStatusBadge(appointment.status)}
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 md:gap-4 text-xs sm:text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1 truncate">
-                      <User className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">د. {appointment.doctors?.profiles?.full_name || "غير محدد"}</span>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      {appointment.doctors?.profiles?.full_name || "غير محدد"}
                     </span>
-                    <span className="flex items-center gap-1 truncate">
-                      <Phone className="w-3 h-3 flex-shrink-0" />
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
                       {appointment.patients?.phone || "غير محدد"}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-                <div className="text-sm">
+              <div className="flex items-center gap-3">
+                <div className="text-left">
                   <div className="font-semibold text-foreground">
                     {appointment.appointment_time}
                   </div>
                    {appointment.cost && (
-                    <div className="text-xs sm:text-sm text-success font-medium">
+                    <div className="text-sm text-success font-medium">
                       {formatCurrency(appointment.cost)}
                     </div>
                   )}
@@ -174,7 +173,6 @@ export const RecentAppointments = () => {
                   variant="ghost" 
                   size="sm"
                   onClick={() => navigate('/appointments')}
-                  className="h-8 w-8 p-0"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>

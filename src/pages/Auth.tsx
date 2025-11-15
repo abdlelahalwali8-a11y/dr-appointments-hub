@@ -279,32 +279,32 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-2 sm:p-4 md:p-6" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-6" dir="rtl">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6 md:mb-8">
-          <div className="flex items-center justify-center mb-3 md:mb-4">
-            <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Stethoscope className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <Stethoscope className="w-8 h-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
             مركز د أحمد قايد سالم الطبي
           </h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">
+          <p className="text-muted-foreground mt-2">
             نظام إدارة المواعيد والمرضى
           </p>
         </div>
 
         <Card className="card-gradient border-0 medical-shadow">
-          <CardHeader className="text-center pb-3 md:pb-4">
-            <CardTitle className="text-lg md:text-xl">مرحباً بك</CardTitle>
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-xl">مرحباً بك</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4 md:p-6">
+          <CardContent>
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 text-xs sm:text-sm">
-                <TabsTrigger value="signin">دخول</TabsTrigger>
-                <TabsTrigger value="signup">حساب</TabsTrigger>
-                <TabsTrigger value="booking">حجز</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="signin">تسجيل الدخول</TabsTrigger>
+                <TabsTrigger value="signup">إنشاء حساب</TabsTrigger>
+                <TabsTrigger value="booking">حجز موعد</TabsTrigger>
               </TabsList>
               
               <TabsContent value="signin">

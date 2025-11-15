@@ -45,19 +45,19 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Quick Search Section */}
         <Card className="border-0 medical-shadow bg-gradient-to-br from-primary/5 to-primary/10">
-          <CardHeader className="pb-2 md:pb-3">
-            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <Search className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Search className="w-5 h-5 text-primary" />
               البحث السريع والحجز
             </CardTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               ابحث عن مريض موجود أو أضف مريض جديد واحجز موعد مباشرة
             </p>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4">
+          <CardContent>
             <SmartSearch />
           </CardContent>
         </Card>
