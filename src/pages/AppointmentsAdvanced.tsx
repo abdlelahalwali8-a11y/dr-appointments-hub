@@ -1,236 +1,323 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Calendar, Clock, User, DollarSign, CheckCircle2, AlertCircle, Trash2, Edit,
-  ChevronLeft, ChevronRight, Eye
-} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Settings, Database, FileText, Users, Stethoscope, Calendar, Activity, Plus, Edit, Trash2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { toast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import Layout from '@/components/layout/Layout';
-import SearchBar from '@/components/common/SearchBar';
-import { useSearch } from '@/hooks/useSearch';
-import ConfirmDialog from '@/components/common/ConfirmDialog';
-import { useForm, FormErrors } from '@/hooks/useForm';
-import { TextInput, TextAreaField, SelectField } from '@/components/common/FormField';
-import { useCurrency } from '@/hooks/useCurrency';
+import DataTable from '@/components/common/DataTable';
 
-interface Appointment {
-  id: string;
-  patient_id: string;
-  doctor_id: string;
-  appointment_date: string;
-  appointment_time: string;
-  status: 'scheduled' | 'waiting' | 'completed' | 'cancelled' | 'return';
-  notes?: string;
-  cost?: number;
-  patients: {
-    full_name: string;
-    phone: string;
-  };
-  doctors: {
-    consultation_fee: number;
-    profiles: {
-      full_name: string;
-    };
-  };
-}
-
-const AppointmentsAdvanced = () => {
+const SystemManagement = () => {
   const permissions = usePermissions();
-  const { formatCurrency } = useCurrency();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('specializations');
+  const [loading, setLoading] = useState(false);
 
-  const fetchAppointments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          patients (full_name, phone),
-          doctors (
-            consultation_fee,
-            profiles (full_name)
-          )
-        `)
-        .order('appointment_date', { ascending: true });
+  // Specializations State
+  const [specializations, setSpecializations] = useState<any[]>([]);
+  const [newSpecialization, setNewSpecialization] = useState({ name: '', name_en: '', description: '' });
+  const [editingSpecialization, setEditingSpecialization] = useState<any>(null);
 
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-      toast({ title: "خطأ", description: "فشل في تحميل المواعيد", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Appointment Types State
+  const [appointmentTypes, setAppointmentTypes] = useState<any[]>([]);
+  const [newAppointmentType, setNewAppointmentType] = useState({ name: '', name_en: '', duration_minutes: 30 });
+
+  // Diagnosis Templates State
+  const [diagnosisTemplates, setDiagnosisTemplates] = useState<any[]>([]);
+  const [newDiagnosis, setNewDiagnosis] = useState({ name: '', content: '', category: '' });
+
+  // Treatment Templates State
+  const [treatmentTemplates, setTreatmentTemplates] = useState<any[]>([]);
+  const [newTreatment, setNewTreatment] = useState({ name: '', content: '', category: '' });
 
   useEffect(() => {
-    fetchAppointments();
+    fetchAllData();
   }, []);
 
-  // Real-time subscription
-  useRealtimeSubscription({
-    table: 'appointments',
-    onInsert: () => fetchAppointments(),
-    onUpdate: () => fetchAppointments(),
-    onDelete: () => fetchAppointments(),
-  });
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchSpecializations(),
+      fetchAppointmentTypes(),
+      fetchDiagnosisTemplates(),
+      fetchTreatmentTemplates(),
+    ]);
+  };
 
-  // Update Appointment Status
-  const handleStatusChange = async (appointmentId: string, newStatus: string) => {
+  const fetchSpecializations = async () => {
     try {
-      let updateData: any = { status: newStatus };
+      const { data, error } = await supabase
+        .from('specializations')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setSpecializations(data || []);
+    } catch (error) {
+      console.error('Error fetching specializations:', error);
+    }
+  };
 
-      // Auto-calculate cost when marking as completed
-      if (newStatus === 'completed') {
-        const apt = appointments.find(a => a.id === appointmentId);
-        if (apt) {
-          updateData.cost = apt.doctors.consultation_fee;
-        }
+  const fetchAppointmentTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('appointment_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setAppointmentTypes(data || []);
+    } catch (error) {
+      console.error('Error fetching appointment types:', error);
+    }
+  };
+
+  const fetchDiagnosisTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('diagnosis_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setDiagnosisTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching diagnosis templates:', error);
+    }
+  };
+
+  const fetchTreatmentTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('treatment_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setTreatmentTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching treatment templates:', error);
+    }
+  };
+
+  const addSpecialization = async () => {
+    if (!newSpecialization.name.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال اسم التخصص",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('specializations')
+        .insert([newSpecialization]);
+
+      if (error) throw error;
+
+      setNewSpecialization({ name: '', name_en: '', description: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة التخصص بنجاح",
+      });
+      fetchSpecializations();
+    } catch (error) {
+      console.error('Error adding specialization:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة التخصص",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateSpecialization = async () => {
+    if (!editingSpecialization) return;
+
+    try {
+      const { error } = await supabase
+        .from('doctors')
+        .update({ specialization: editingSpecialization.new })
+        .eq('specialization', editingSpecialization.old);
+
+      if (error) throw error;
+
+      setSpecializations(specializations.map(s => 
+        s === editingSpecialization.old ? editingSpecialization.new : s
+      ));
+      setEditingSpecialization(null);
+      
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث التخصص بنجاح",
+      });
+
+      fetchSpecializations();
+    } catch (error) {
+      console.error('Error updating specialization:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تحديث التخصص",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSpecialization = async (specialization: string) => {
+    try {
+      const { data: doctorsWithSpec } = await supabase
+        .from('doctors')
+        .select('id')
+        .eq('specialization', specialization);
+
+      if (doctorsWithSpec && doctorsWithSpec.length > 0) {
+        toast({
+          title: "تحذير",
+          description: `لا يمكن حذف التخصص. يوجد ${doctorsWithSpec.length} طبيب مرتبط به`,
+          variant: "destructive",
+        });
+        return;
       }
 
-      const { error } = await supabase
-        .from('appointments')
-        .update(updateData)
-        .eq('id', appointmentId);
-
-      if (error) throw error;
-
-      toast({ title: "تم التحديث", description: "تم تحديث حالة الموعد بنجاح" });
-      fetchAppointments();
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل في تحديث الموعد", variant: "destructive" });
+      setSpecializations(specializations.filter(s => s !== specialization));
+      
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف التخصص بنجاح",
+      });
+    } catch (error) {
+      console.error('Error deleting specialization:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف التخصص",
+        variant: "destructive",
+      });
     }
   };
 
-  // Delete Appointment
-  const handleDeleteAppointment = async () => {
-    if (!selectedAppointment) return;
+
+  const addDiagnosisTemplate = async () => {
+    if (!newDiagnosis.name.trim() || !newDiagnosis.content.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال جميع البيانات",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', selectedAppointment.id);
+        .from('diagnosis_templates')
+        .insert([newDiagnosis]);
 
       if (error) throw error;
 
-      toast({ title: "تم الحذف", description: "تم حذف الموعد بنجاح" });
-      setIsDeleteOpen(false);
-      setSelectedAppointment(null);
-      fetchAppointments();
-    } catch (error: any) {
-      toast({ title: "خطأ", description: error.message || "فشل في حذف الموعد", variant: "destructive" });
+      setNewDiagnosis({ name: '', content: '', category: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة قالب التشخيص بنجاح",
+      });
+      fetchDiagnosisTemplates();
+    } catch (error) {
+      console.error('Error adding diagnosis template:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة قالب التشخيص",
+        variant: "destructive",
+      });
     }
   };
 
-  // Search and Filter
-  const { searchTerm: filteredSearchTerm, setSearchTerm: setFilteredSearchTerm, filteredData: searchedAppointments } = useSearch(appointments, {
-    fields: ['patients.full_name', 'doctors.profiles.full_name', 'status'],
-    minChars: 0,
-  });
-
-  // Calendar View
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const getAppointmentsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return appointments.filter(apt => apt.appointment_date === dateStr);
-  };
-
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
-
-    // Empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="p-2"></div>);
+  const addTreatmentTemplate = async () => {
+    if (!newTreatment.name.trim() || !newTreatment.content.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال جميع البيانات",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Days of month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-      const dayAppointments = getAppointmentsForDate(date);
-      const isToday = new Date().toDateString() === date.toDateString();
+    try {
+      const { error } = await supabase
+        .from('treatment_templates')
+        .insert([newTreatment]);
 
-      days.push(
-        <div
-          key={day}
-          className={`p-2 border rounded-lg min-h-24 ${isToday ? 'bg-primary/10 border-primary' : 'bg-accent/30'}`}
-        >
-          <p className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : 'text-foreground'}`}>
-            {day}
-          </p>
-          <div className="space-y-1">
-            {dayAppointments.slice(0, 2).map(apt => (
-              <div
-                key={apt.id}
-                onClick={() => {
-                  setSelectedAppointment(apt);
-                  setIsViewOpen(true);
-                }}
-                className="text-xs p-1 rounded bg-primary/20 text-primary cursor-pointer hover:bg-primary/30 truncate"
-              >
-                {apt.patients.full_name}
-              </div>
-            ))}
-            {dayAppointments.length > 2 && (
-              <p className="text-xs text-muted-foreground">+{dayAppointments.length - 2} أخرى</p>
-            )}
-          </div>
-        </div>
-      );
+      if (error) throw error;
+
+      setNewTreatment({ name: '', content: '', category: '' });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة قالب العلاج بنجاح",
+      });
+      fetchTreatmentTemplates();
+    } catch (error) {
+      console.error('Error adding treatment template:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة قالب العلاج",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addAppointmentType = async () => {
+    if (!newAppointmentType.name.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال اسم نوع الموعد",
+        variant: "destructive",
+      });
+      return;
     }
 
-    return days;
+    try {
+      const { error } = await supabase
+        .from('appointment_types')
+        .insert([newAppointmentType]);
+
+      if (error) throw error;
+
+      setNewAppointmentType({ name: '', name_en: '', duration_minutes: 30 });
+      toast({
+        title: "تم الإضافة",
+        description: "تم إضافة نوع الموعد بنجاح",
+      });
+      fetchAppointmentTypes();
+    } catch (error) {
+      console.error('Error adding appointment type:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة نوع الموعد",
+        variant: "destructive",
+      });
+    }
   };
 
-  const statusColors: Record<string, string> = {
-    scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    waiting: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    return: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  };
-
-  const statusLabels: Record<string, string> = {
-    scheduled: 'مجدول',
-    waiting: 'في الانتظار',
-    completed: 'مكتمل',
-    cancelled: 'ملغي',
-    return: 'عودة',
-  };
-
-  if (loading) {
+  if (!permissions.canManageSettings) {
     return (
       <Layout>
-        <div className="p-4 md:p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-          </div>
+        <div className="p-6">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Settings className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">غير مصرح</h3>
+              <p className="text-muted-foreground">ليس لديك صلاحية الوصول لإدارة النظام</p>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -238,253 +325,371 @@ const AppointmentsAdvanced = () => {
 
   return (
     <Layout>
-      <div className="p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
-          <div className="w-full sm:w-auto">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">إدارة المواعيد</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">
-              إدارة شاملة لجدولة المواعيد ({appointments.length})
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
+              <Database className="w-8 h-8 text-primary" />
+              إدارة النظام
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              إدارة البيانات الأساسية والقوالب والإعدادات العامة
             </p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              size="sm"
-              variant={viewMode === 'calendar' ? 'medical' : 'outline'}
-              onClick={() => setViewMode('calendar')}
-              className="flex-1 sm:flex-none text-xs md:text-sm"
-            >
-              <Calendar className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">تقويم</span>
-            </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'list' ? 'medical' : 'outline'}
-              onClick={() => setViewMode('list')}
-              className="flex-1 sm:flex-none text-xs md:text-sm"
-            >
-              <Eye className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-              <span className="hidden sm:inline">قائمة</span>
-            </Button>
           </div>
         </div>
 
-        {/* Search */}
-        <SearchBar
-          value={filteredSearchTerm}
-          onChange={setFilteredSearchTerm}
-          placeholder="البحث بالمريض، الطبيب، أو الحالة..."
-        />
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger value="specializations" className="flex items-center gap-2">
+              <Stethoscope className="w-4 h-4" />
+              التخصصات
+            </TabsTrigger>
+            <TabsTrigger value="appointment-types" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              أنواع المواعيد
+            </TabsTrigger>
+            <TabsTrigger value="diagnosis" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              قوالب التشخيص
+            </TabsTrigger>
+            <TabsTrigger value="treatment" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              قوالب العلاج
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Calendar View */}
-        {viewMode === 'calendar' && (
-          <Card className="medical-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>التقويم</CardTitle>
-                  <CardDescription>
-                    {currentDate.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}
-                  </CardDescription>
-                </div>
+          {/* Specializations Tab */}
+          <TabsContent value="specializations" className="space-y-4">
+            <Card className="card-gradient border-0 medical-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="w-5 h-5 text-primary" />
+                  إدارة التخصصات الطبية
+                </CardTitle>
+                <CardDescription>
+                  إضافة وتعديل التخصصات الطبية المتاحة في النظام
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Add New Specialization */}
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCurrentDate(new Date())}
-                  >
-                    اليوم
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                  >
-                    <ChevronRight className="w-4 h-4" />
+                  <Input
+                    placeholder="أدخل تخصص جديد..."
+                    value={newSpecialization.name}
+                    onChange={(e) => setNewSpecialization({ ...newSpecialization, name: e.target.value })}
+                    onKeyPress={(e) => e.key === 'Enter' && addSpecialization()}
+                  />
+                  <Button onClick={addSpecialization} variant="medical">
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-2 mb-4">
-                {['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map(day => (
-                  <div key={day} className="text-center font-semibold text-sm text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {renderCalendar()}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* List View */}
-        {viewMode === 'list' && (
-          <div className="space-y-4">
-            {searchedAppointments.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>لا توجد مواعيد تطابق معايير البحث</AlertDescription>
-              </Alert>
-            ) : (
-              searchedAppointments.map(apt => (
-                <Card key={apt.id} className="medical-shadow hover:shadow-lg transition">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-foreground">{apt.patients.full_name}</h3>
-                          <Badge className={statusColors[apt.status]}>
-                            {statusLabels[apt.status]}
-                          </Badge>
+                {/* Specializations List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {specializations.map((spec) => (
+                    <Card key={spec} className="p-4 bg-accent/30">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4 text-primary" />
+                          <span className="font-medium">{spec}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          د. {apt.doctors.profiles.full_name}
-                        </p>
-                        <div className="flex flex-wrap gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(apt.appointment_date).toLocaleDateString('ar-SA')}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {apt.appointment_time}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4" />
-                            {formatCurrency(apt.cost || apt.doctors.consultation_fee)}
-                          </span>
+                        <div className="flex gap-1">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => setEditingSpecialization({ old: spec, new: spec })}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>تعديل التخصص</DialogTitle>
+                                <DialogDescription>
+                                  تحديث اسم التخصص الطبي
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>اسم التخصص الجديد</Label>
+                                  <Input
+                                    value={editingSpecialization?.new || ''}
+                                    onChange={(e) => setEditingSpecialization(prev => 
+                                      prev ? { ...prev, new: e.target.value } : null
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setEditingSpecialization(null)}>
+                                  إلغاء
+                                </Button>
+                                <Button variant="medical" onClick={updateSpecialization}>
+                                  حفظ
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="icon" variant="ghost">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  هل أنت متأكد من حذف التخصص "{spec}"؟ لا يمكن التراجع عن هذا الإجراء.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteSpecialization(spec)}>
+                                  حذف
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                    </Card>
+                  ))}
+                </div>
+
+                {specializations.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Stethoscope className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد تخصصات. ابدأ بإضافة التخصصات الطبية.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Appointment Types Tab */}
+          <TabsContent value="appointment-types" className="space-y-4">
+            <Card className="card-gradient border-0 medical-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  إدارة أنواع المواعيد
+                </CardTitle>
+                <CardDescription>
+                  تخصيص أنواع المواعيد المتاحة للحجز
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="أدخل نوع موعد جديد..."
+                    value={newAppointmentType.name}
+                    onChange={(e) => setNewAppointmentType({ ...newAppointmentType, name: e.target.value })}
+                    onKeyPress={(e) => e.key === 'Enter' && addAppointmentType()}
+                  />
+                  <Button onClick={addAppointmentType} variant="medical">
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {appointmentTypes.map((type) => (
+                    <Card key={type} className="p-4 bg-accent/30">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-primary" />
+                          <span className="font-medium">{type}</span>
+                        </div>
                         <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedAppointment(apt);
-                            setIsViewOpen(true);
-                          }}
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setAppointmentTypes(appointmentTypes.filter(t => t !== type))}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
-                        {permissions.canEditAppointments && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedAppointment(apt);
-                                setIsEditOpen(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => {
-                                setSelectedAppointment(apt);
-                                setIsDeleteOpen(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Diagnosis Templates Tab */}
+          <TabsContent value="diagnosis" className="space-y-4">
+            <Card className="card-gradient border-0 medical-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  قوالب التشخيص
+                </CardTitle>
+                <CardDescription>
+                  إنشاء قوالب جاهزة للتشخيص الطبي
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="medical" className="w-full md:w-auto">
+                      <Plus className="w-4 h-4 ml-2" />
+                      إضافة قالب تشخيص
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>قالب تشخيص جديد</DialogTitle>
+                      <DialogDescription>
+                        أضف قالب تشخيص للاستخدام السريع
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>اسم القالب</Label>
+                        <Input
+                          placeholder="مثال: التهاب الحلق"
+                          value={newDiagnosis.name}
+                          onChange={(e) => setNewDiagnosis({ ...newDiagnosis, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>محتوى التشخيص</Label>
+                        <Input
+                          placeholder="وصف التشخيص..."
+                          value={newDiagnosis.content}
+                          onChange={(e) => setNewDiagnosis({ ...newDiagnosis, content: e.target.value })}
+                        />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        )}
+                    <DialogFooter>
+                      <Button variant="medical" onClick={addDiagnosisTemplate}>
+                        حفظ
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-        {/* View Appointment Dialog */}
-        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>تفاصيل الموعد</DialogTitle>
-            </DialogHeader>
-            {selectedAppointment && (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">المريض</p>
-                  <p className="font-semibold">{selectedAppointment.patients.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">الطبيب</p>
-                  <p className="font-semibold">د. {selectedAppointment.doctors.profiles.full_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">التاريخ والوقت</p>
-                  <p className="font-semibold">
-                    {new Date(selectedAppointment.appointment_date).toLocaleDateString('ar-SA')} - {selectedAppointment.appointment_time}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">الحالة</p>
-                  <Badge className={statusColors[selectedAppointment.status]}>
-                    {statusLabels[selectedAppointment.status]}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">التكلفة</p>
-                  <p className="font-semibold">{formatCurrency(selectedAppointment.cost || selectedAppointment.doctors.consultation_fee)}</p>
-                </div>
-                {selectedAppointment.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">ملاحظات</p>
-                    <p className="text-sm">{selectedAppointment.notes}</p>
-                  </div>
-                )}
-                {permissions.canEditAppointments && (
-                  <div className="pt-4 border-t space-y-2">
-                    <p className="text-sm font-semibold">تحديث الحالة</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(statusLabels).map(([status, label]) => (
+                <div className="space-y-3">
+                  {diagnosisTemplates.map((template) => (
+                    <Card key={template.id} className="p-4 bg-accent/30">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-foreground mb-1">{template.name}</h4>
+                          <p className="text-sm text-muted-foreground">{template.content}</p>
+                        </div>
                         <Button
-                          key={status}
-                          size="sm"
-                          variant={selectedAppointment.status === status ? 'medical' : 'outline'}
-                          onClick={() => {
-                            handleStatusChange(selectedAppointment.id, status);
-                            setIsViewOpen(false);
-                          }}
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDiagnosisTemplates(diagnosisTemplates.filter(t => t.id !== template.id))}
                         >
-                          {label}
+                          <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
-                      ))}
-                    </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {diagnosisTemplates.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد قوالب تشخيص. ابدأ بإضافة قوالب جاهزة.</p>
                   </div>
                 )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Delete Confirmation Dialog */}
-        <ConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="حذف الموعد"
-          description={`هل أنت متأكد من حذف موعد ${selectedAppointment?.patients.full_name}؟`}
-          onConfirm={handleDeleteAppointment}
-          confirmText="حذف نهائي"
-          isDangerous
-        />
+          {/* Treatment Templates Tab */}
+          <TabsContent value="treatment" className="space-y-4">
+            <Card className="card-gradient border-0 medical-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  قوالب العلاج
+                </CardTitle>
+                <CardDescription>
+                  إنشاء قوالب جاهزة لخطط العلاج
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="medical" className="w-full md:w-auto">
+                      <Plus className="w-4 h-4 ml-2" />
+                      إضافة قالب علاج
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>قالب علاج جديد</DialogTitle>
+                      <DialogDescription>
+                        أضف قالب علاج للاستخدام السريع
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>اسم القالب</Label>
+                        <Input
+                          placeholder="مثال: علاج التهاب"
+                          value={newTreatment.name}
+                          onChange={(e) => setNewTreatment({ ...newTreatment, content: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>الفئة</Label>
+                        <Input
+                          placeholder="مثال: أمراض القلب، السكري..."
+                          value={newTreatment.category}
+                          onChange={(e) => setNewTreatment({ ...newTreatment, category: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="medical" onClick={addTreatmentTemplate}>
+                        حفظ
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <div className="space-y-3">
+                  {treatmentTemplates.map((template) => (
+                    <Card key={template.id} className="p-4 bg-accent/30">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-foreground mb-1">{template.name}</h4>
+                          <p className="text-sm text-muted-foreground">{template.content}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setTreatmentTemplates(treatmentTemplates.filter(t => t.id !== template.id))}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {treatmentTemplates.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد قوالب علاج. ابدأ بإضافة قوالب جاهزة.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
 };
 
-export default AppointmentsAdvanced;
+export default SystemManagement;
