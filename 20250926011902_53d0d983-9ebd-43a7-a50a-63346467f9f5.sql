@@ -1,4 +1,3 @@
--- Create user roles enum
 CREATE TYPE public.user_role AS ENUM ('admin', 'doctor', 'receptionist', 'patient');
 
 -- Create appointment status enum  
