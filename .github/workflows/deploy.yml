@@ -53,4 +53,3 @@ jobs:
       # مثال على خطوة نشر عامة (إذا كنت تستخدم أداة نشر أخرى)
       - name: Deploy
         run: echo "Deployment command goes here" # استبدل هذا بأمر النشر الفعلي الخاص بك
-
