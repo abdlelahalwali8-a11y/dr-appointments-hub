@@ -1,4 +1,6 @@
 name: Deploy to Hosting
+permissions:
+  contents: read
 
 on:
   push:
