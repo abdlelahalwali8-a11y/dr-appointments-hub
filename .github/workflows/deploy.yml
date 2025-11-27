@@ -1,48 +1,56 @@
-- name: Cache
-  uses: actions/cache@v4.3.0
-  with:
-    # A list of files, directories, and wildcard patterns to cache and restore
-    path: 
-    # An explicit key for restoring and saving the cache
-    key: 
-    # An ordered multiline string listing the prefix-matched keys, that are used for restoring stale cache if no cache hit occurred for key. Note `cache-hit` returns false in this case.
-    restore-keys: # optional
-    # The chunk size used to split up large files during upload, in bytes
-    upload-chunk-size: # optional
-    # An optional boolean when enabled, allows windows runners to save or restore caches that can be restored or saved respectively on other platforms
-    enableCrossOsArchive: # optional, default is false
-    # Fail the workflow if cache entry is not found
-    fail-on-cache-miss: # optional, default is false
-    # Check if a cache entry exists for the given input(s) (key, restore-keys) without downloading the cache
-    lookup-only: # optional, default is false
-    # Run the post step to save the cache even if another step before fails
-    save-always: # optional, default is false
-- name: Setup Node.js environment
-  uses: actions/setup-node@v4 # تم التحديث إلى الإصدار الأحدث
-  with:
-    # Set always-auth in npmrc.
-    always-auth: false # تم تعيين قيمة افتراضية
-    # Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0.
-    node-version: '20.x' # تم تعيين قيمة صالحة
-    # File containing the version Spec of the version to use.  Examples: package.json, .nvmrc, .node-version, .tool-versions.
-    node-version-file: # optional
-    # Target architecture for Node to use. Examples: x86, x64. Will use system architecture by default.
-    architecture: # optional
-    # Set this option if you want the action to check for the latest available version that satisfies the version spec.
-    check-latest: # optional
-    # Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN.
-    registry-url: # optional
-    # Optional scope for authenticating against scoped registries. Will fall back to the repository owner when using the GitHub Packages registry (https://npm.pkg.github.com/).
-    scope: # optional
-    # Used to pull node distributions from node-versions. Since there's a default, this is typically not supplied by the user. When running this action on github.com, the default value is sufficient. When running on GHES, you can pass a personal access token for github.com if you are experiencing rate limiting.
-    token: ${{ github.server_url == 'https://github.com' && github.token || '' }} # تم تعيين قيمة افتراضية
-    # Used to specify a package manager for caching in the default directory. Supported values: npm, yarn, pnpm.
-    cache: 'npm' # تم تعيين قيمة افتراضية
-    # Set to false to disable automatic caching. By default, caching is enabled when either devEngines.packageManager or the top-level packageManager field in package.json specifies npm as the package manager.
-    package-manager-cache: true # تم تعيين قيمة افتراضية
-    # Used to specify the path to a dependency file: package-lock.json, yarn.lock, etc. Supports wildcards or a list of file names for caching multiple dependencies.
-    cache-dependency-path: # optional
-    # Used to specify an alternative mirror to downlooad Node.js binaries from
-    mirror: # optional
-    # The token used as Authorization header when fetching from the mirror
-    mirror-token: # optional
+name: Deploy to Hosting
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # الخطوة 1: إعداد بيئة Node.js
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x' # يمكنك تغيير هذا الإصدار حسب حاجتك
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json' # تأكد من أن هذا المسار صحيح
+
+      # الخطوة 2: استعادة الذاكرة المؤقتة (Cache)
+      # تم دمج هذه الخطوة مع إعداد Node.js في الإصدار v4، ولكن يمكن إبقاؤها منفصلة إذا لزم الأمر
+      # إذا كنت تستخدم actions/setup-node@v4 مع cache: 'npm'، فإنه يتولى Cache تلقائيًا
+      # إذا كنت تفضل استخدام actions/cache@v4.3.0 بشكل منفصل، يجب أن تكون هكذا:
+      # - name: Cache
+      #   uses: actions/cache@v4.3.0
+      #   with:
+      #     path: ~/.npm # أو المسار الذي تخزن فيه الحزم
+      #     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-node-
+
+      # الخطوة 3: تثبيت الاعتمادات
+      - name: Install Dependencies
+        run: npm install
+
+      # الخطوة 4: بناء المشروع (إذا كان مشروع React/Next.js/Vue)
+      - name: Build Project
+        run: npm run build # تأكد من أن هذا الأمر صحيح في package.json
+
+      # الخطوة 5: النشر (مثال على النشر إلى Firebase Hosting)
+      # يجب استبدال هذا الجزء بأمر النشر الفعلي الخاص بك (مثل Firebase أو Vercel أو غيره)
+      # إذا كنت تستخدم Firebase، ستحتاج إلى إعداد Firebase CLI ورمز النشر (Deploy Token)
+      # - name: Deploy to Firebase
+      #   uses: FirebaseExtended/action-hosting-deploy@v0
+      #   with:
+      #     repoToken: '${{ secrets.GITHUB_TOKEN }}'
+      #     firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DR_APPOINTMENTS_HUB }}' # استبدل باسم حساب الخدمة الخاص بك
+      #     channelId: live
+      #     projectId: dr-appointments-hub # استبدل باسم مشروعك
+      
+      # مثال على خطوة نشر عامة (إذا كنت تستخدم أداة نشر أخرى)
+      - name: Deploy
+        run: echo "Deployment command goes here" # استبدل هذا بأمر النشر الفعلي الخاص بك
+
